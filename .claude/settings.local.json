@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /mnt/c/Users/cfournier/work_files/side_phd/SARAPP/sarAPP -type f -name *.R -o -name *.Rmd -o -name *.Rproj -o -name *.yaml -o -name *.yml -o -name *.json -o -name *.md -o -name *.txt -o -name *.config)",
+      "Bash(for item:*)",
+      "Bash(do mv:*)",
+      "Bash(done)"
+    ]
+  }
+}

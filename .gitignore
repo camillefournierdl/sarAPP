@@ -1,0 +1,15 @@
+# R
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+# Flutter SDK (not part of the project)
+sarAPP/flutter/
+flutter/
+
+# Flutter build artifacts
+sarAPP/sarapp/build/
+sarAPP/sarapp/.dart_tool/
+sarAPP/sarapp/.flutter-plugins
+sarAPP/sarapp/.flutter-plugins-dependencies

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp:*)",
+      "Bash(/mnt/c/Users/cfournier/work_files/side_phd/SARAPP/sarAPP/sarapp/pubspec.yaml:*)",
+      "Bash(/mnt/c/Users/cfournier/work_files/side_phd/SARAPP/sarAPP/sarapp/android/app/src/main/AndroidManifest.xml:*)"
+    ]
+  }
+}
