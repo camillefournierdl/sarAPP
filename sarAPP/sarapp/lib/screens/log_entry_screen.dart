@@ -129,10 +129,11 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
             title: 'Physical activity today?',
             child: _ChipSelector(
               options: const [
-                'Weight lifting',
-                'Intense cardio',
-                'Endurance',
-                'Dance',
+                '🏋️ Weight lifting',
+                '🏃 Intense cardio',
+                '🚴 Endurance',
+                '💃 Dance',
+                '🧗 Climbing',
               ],
               selected: _activities,
               onChanged: (v) => setState(() => _activities = v),
@@ -144,14 +145,19 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
           _Section(
             title: 'What did you eat today?',
             child: _ChipSelector(
-              options: const ['Gluten', 'Lactose', 'Sugars'],
+              options: const [
+                '🌾 Gluten',
+                '🥛 Lactose',
+                '🍬 Sugars',
+              ],
               selected: _foods,
               onChanged: (v) => setState(() => _foods = v),
             ),
           ),
 
-          // ── Symptoms (female only) ───────────────────────────────────────
-          if (isFemale) ...[
+          // ── Symptoms (female + setting enabled) ─────────────────────────
+          if (isFemale &&
+              context.watch<SettingsProvider>().settings.showSymptoms) ...[
             const SizedBox(height: 16),
             _Section(
               title: 'Symptoms',

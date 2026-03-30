@@ -88,4 +88,15 @@ class Entry {
         notes: map['notes'] as String? ?? '',
         createdAt: map['created_at'] as String,
       );
+
+  /// True if the entry contains at least one piece of logged data.
+  bool get hasData =>
+      emotions.isNotEmpty ||
+      happinessScore != null ||
+      activities.isNotEmpty ||
+      foods.isNotEmpty ||
+      symptoms.isNotEmpty ||
+      notes.isNotEmpty ||
+      periodStart ||
+      periodEnd;
 }

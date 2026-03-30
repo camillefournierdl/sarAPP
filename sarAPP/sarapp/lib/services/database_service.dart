@@ -121,6 +121,7 @@ class DatabaseService {
       onboardingComplete:
           (await _getSetting('onboarding_complete')) == 'true',
       lastPeriodStart: await _getSetting('last_period_start'),
+      showSymptoms: (await _getSetting('show_symptoms')) == 'true',
     );
   }
 
@@ -131,6 +132,7 @@ class DatabaseService {
     await _saveSetting(
         'notifications_enabled', s.notificationsEnabled.toString());
     await _saveSetting('onboarding_complete', s.onboardingComplete.toString());
+    await _saveSetting('show_symptoms', s.showSymptoms.toString());
     if (s.lastPeriodStart != null) {
       await _saveSetting('last_period_start', s.lastPeriodStart!);
     } else {

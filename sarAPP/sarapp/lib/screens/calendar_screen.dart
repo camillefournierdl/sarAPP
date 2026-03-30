@@ -11,35 +11,80 @@ import '../widgets/cycle_phase_selector.dart';
 import '../widgets/emotion_tag_selector.dart';
 import 'log_entry_screen.dart';
 
-class CalendarScreen extends StatelessWidget {
+class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
+
+  @override
+  State<CalendarScreen> createState() => _CalendarScreenState();
+}
+
+class _CalendarScreenState extends State<CalendarScreen> {
+  DateTime _focusedDay = DateTime.now();
+
+  void _onFocusedDayChanged(DateTime day) =>
+      setState(() => _focusedDay = day);
+
+  void _jumpToToday() =>
+      setState(() => _focusedDay = DateTime.now());
 
   @override
   Widget build(BuildContext context) {
     final isFemale =
         context.watch<SettingsProvider>().settings.isFemaleMode;
 
+    final todayButton = IconButton(
+      icon: const Icon(Icons.today),
+      tooltip: 'Go to today',
+      onPressed: _jumpToToday,
+    );
+
     // Male users only get the mood tab
     if (!isFemale) {
-      return const _MoodCalendarTab();
+      return Column(
+        children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: todayButton,
+          ),
+          Expanded(
+            child: _MoodCalendarTab(
+              focusedDay: _focusedDay,
+              onFocusedDayChanged: _onFocusedDayChanged,
+            ),
+          ),
+        ],
+      );
     }
 
     return DefaultTabController(
       length: 2,
       child: Column(
         children: [
-          TabBar(
-            tabs: const [
-              Tab(icon: Icon(Icons.favorite_outline), text: 'Cycle'),
-              Tab(icon: Icon(Icons.mood), text: 'Mood'),
+          Row(
+            children: [
+              Expanded(
+                child: TabBar(
+                  tabs: const [
+                    Tab(icon: Icon(Icons.favorite_outline), text: 'Cycle'),
+                    Tab(icon: Icon(Icons.mood), text: 'Mood'),
+                  ],
+                  labelColor: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              todayButton,
             ],
-            labelColor: Theme.of(context).colorScheme.primary,
           ),
-          const Expanded(
+          Expanded(
             child: TabBarView(
               children: [
-                _CycleCalendarTab(),
-                _MoodCalendarTab(),
+                _CycleCalendarTab(
+                  focusedDay: _focusedDay,
+                  onFocusedDayChanged: _onFocusedDayChanged,
+                ),
+                _MoodCalendarTab(
+                  focusedDay: _focusedDay,
+                  onFocusedDayChanged: _onFocusedDayChanged,
+                ),
               ],
             ),
           ),
@@ -70,14 +115,16 @@ void _openEntry(BuildContext context, String dateStr) {
 // ── Cycle calendar tab ─────────────────────────────────────────────────────────
 
 class _CycleCalendarTab extends StatefulWidget {
-  const _CycleCalendarTab();
+  final DateTime focusedDay;
+  final ValueChanged<DateTime> onFocusedDayChanged;
+  const _CycleCalendarTab(
+      {required this.focusedDay, required this.onFocusedDayChanged});
 
   @override
   State<_CycleCalendarTab> createState() => _CycleCalendarTabState();
 }
 
 class _CycleCalendarTabState extends State<_CycleCalendarTab> {
-  DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   Map<DateTime, String> _phases = {};
 
@@ -87,70 +134,63 @@ class _CycleCalendarTabState extends State<_CycleCalendarTab> {
     _refreshPhases();
   }
 
-  void _refreshPhases() {
-    final lastPeriodStart =
-        context.read<SettingsProvider>().settings.lastPeriodStart;
-    if (lastPeriodStart == null) {
-      setState(() => _phases = {});
-      return;
-    }
-    final entries = context.read<EntriesProvider>().entries;
-    final rangeStart =
-        DateTime(_focusedDay.year, _focusedDay.month - 2, 1);
-    final rangeEnd =
-        DateTime(_focusedDay.year, _focusedDay.month + 3, 0);
-    setState(() {
-      _phases = CycleService.predictPhases(
-        lastPeriodStart: DateTime.parse(lastPeriodStart),
-        rangeStart: rangeStart,
-        rangeEnd: rangeEnd,
-        entries: entries,
-      );
-    });
-  }
-
-  Future<void> _showSetupSheet() async {
-    DateTime? pickedStart;
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (ctx) => _SetupSheet(
-        onSave: (date) async {
-          pickedStart = date;
-          Navigator.pop(ctx);
-        },
-      ),
-    );
-    if (pickedStart != null && mounted) {
-      await context
-          .read<SettingsProvider>()
-          .setPeriodBaseline(DateFormat('yyyy-MM-dd').format(pickedStart!));
+  @override
+  void didUpdateWidget(_CycleCalendarTab old) {
+    super.didUpdateWidget(old);
+    if (old.focusedDay.year != widget.focusedDay.year ||
+        old.focusedDay.month != widget.focusedDay.month) {
       _refreshPhases();
     }
   }
 
+  void _refreshPhases() {
+    final lastPeriodStart =
+        context.read<SettingsProvider>().settings.lastPeriodStart;
+    final entries = context.read<EntriesProvider>().entries;
+    // Can show phases if either a baseline is set OR entries contain period starts
+    final hasPeriodData =
+        lastPeriodStart != null || entries.any((e) => e.periodStart);
+    if (!hasPeriodData) {
+      setState(() => _phases = {});
+      return;
+    }
+    final rangeStart =
+        DateTime(widget.focusedDay.year, widget.focusedDay.month - 2, 1);
+    final rangeEnd =
+        DateTime(widget.focusedDay.year, widget.focusedDay.month + 3, 0);
+    setState(() {
+      _phases = CycleService.buildPhaseMap(
+        baselinePeriodStart: lastPeriodStart,
+        entries: entries,
+        rangeStart: rangeStart,
+        rangeEnd: rangeEnd,
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final settings = context.watch<SettingsProvider>().settings;
     final entries = context.watch<EntriesProvider>().entries;
+    final hasPeriodEntries = entries.any((e) => e.periodStart);
 
     return Column(
       children: [
-        // Setup banner when no baseline set
-        if (settings.lastPeriodStart == null)
-          _SetupBanner(onTap: _showSetupSheet),
+        // Instruction when no period data logged yet
+        if (!hasPeriodEntries)
+          _InstructionBanner(
+            message:
+                'Tap a past day on the calendar to mark your period start and end.',
+          ),
 
         _SharedCalendar(
-          focusedDay: _focusedDay,
+          focusedDay: widget.focusedDay,
           selectedDay: _selectedDay,
           onDaySelected: (selected, focused) {
-            setState(() {
-              _selectedDay = selected;
-              _focusedDay = focused;
-            });
+            setState(() => _selectedDay = selected);
+            widget.onFocusedDayChanged(focused);
           },
           onPageChanged: (focused) {
-            _focusedDay = focused;
+            widget.onFocusedDayChanged(focused);
             _refreshPhases();
           },
           entries: entries,
@@ -197,8 +237,8 @@ class _CycleCalendarTabState extends State<_CycleCalendarTab> {
           ),
         ],
 
-        // Phase legend
-        if (settings.lastPeriodStart != null) ...[
+        // Phase legend — show once we have any phase data to display
+        if (_phases.isNotEmpty) ...[
           const Divider(height: 1),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -230,14 +270,16 @@ Color _happinessColor(int score) {
 }
 
 class _MoodCalendarTab extends StatefulWidget {
-  const _MoodCalendarTab();
+  final DateTime focusedDay;
+  final ValueChanged<DateTime> onFocusedDayChanged;
+  const _MoodCalendarTab(
+      {required this.focusedDay, required this.onFocusedDayChanged});
 
   @override
   State<_MoodCalendarTab> createState() => _MoodCalendarTabState();
 }
 
 class _MoodCalendarTabState extends State<_MoodCalendarTab> {
-  DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   // null = happiness mode; an emotion value = filter to that emotion
   String? _filterEmotion;
@@ -269,18 +311,16 @@ class _MoodCalendarTabState extends State<_MoodCalendarTab> {
     return Column(
       children: [
         _SharedCalendar(
-          focusedDay: _focusedDay,
+          focusedDay: widget.focusedDay,
           selectedDay: _selectedDay,
           onDaySelected: (selected, focused) {
-            setState(() {
-              _selectedDay = selected;
-              _focusedDay = focused;
-            });
+            setState(() => _selectedDay = selected);
+            widget.onFocusedDayChanged(focused);
             if (!selected.isAfter(DateTime.now())) {
               _openEntry(context, DateFormat('yyyy-MM-dd').format(selected));
             }
           },
-          onPageChanged: (focused) => setState(() => _focusedDay = focused),
+          onPageChanged: (focused) => widget.onFocusedDayChanged(focused),
           entries: entries,
           dayColorBuilder: (day) => _colorForDay(day, entries),
         ),
@@ -333,7 +373,11 @@ class _SharedCalendar extends StatelessWidget {
       onPageChanged: onPageChanged,
       eventLoader: (day) {
         final dateStr = DateFormat('yyyy-MM-dd').format(day);
-        return entries.any((e) => e.date == dateStr) ? ['logged'] : [];
+        final entry = entries.cast<dynamic>().firstWhere(
+              (e) => e.date == dateStr,
+              orElse: () => null,
+            );
+        return (entry != null && entry.hasData) ? ['logged'] : [];
       },
       calendarBuilders: CalendarBuilders(
         defaultBuilder: (_, day, __) => _DayCell(
@@ -640,97 +684,28 @@ class _LegendDot extends StatelessWidget {
   }
 }
 
-// ── Setup banner ───────────────────────────────────────────────────────────────
+// ── Instruction banner ─────────────────────────────────────────────────────────
 
-class _SetupBanner extends StatelessWidget {
-  final VoidCallback onTap;
-  const _SetupBanner({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Theme.of(context).colorScheme.primaryContainer,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          child: Row(
-            children: [
-              Icon(Icons.info_outline,
-                  size: 18,
-                  color: Theme.of(context).colorScheme.onPrimaryContainer),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Tap to set your last period start date and see cycle predictions.',
-                  style: TextStyle(
-                      color: Theme.of(context).colorScheme.onPrimaryContainer),
-                ),
-              ),
-              Icon(Icons.arrow_forward_ios,
-                  size: 14,
-                  color: Theme.of(context).colorScheme.onPrimaryContainer),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Setup bottom sheet ─────────────────────────────────────────────────────────
-
-class _SetupSheet extends StatefulWidget {
-  final Future<void> Function(DateTime) onSave;
-  const _SetupSheet({required this.onSave});
-
-  @override
-  State<_SetupSheet> createState() => _SetupSheetState();
-}
-
-class _SetupSheetState extends State<_SetupSheet> {
-  DateTime? _startDate;
-
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now().subtract(const Duration(days: 14)),
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now(),
-      helpText: 'When did your last period start?',
-    );
-    if (picked != null) setState(() => _startDate = picked);
-  }
+class _InstructionBanner extends StatelessWidget {
+  final String message;
+  const _InstructionBanner({required this.message});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(
-          24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
         children: [
-          Text('Set up cycle tracking',
-              style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 8),
-          const Text(
-              'Enter the start date of your last period. '
-              'sarAPP will predict your current phase using a 28-day cycle average. '
-              'Predictions will improve as you log more data.'),
-          const SizedBox(height: 24),
-          OutlinedButton.icon(
-            icon: const Icon(Icons.calendar_today),
-            label: Text(_startDate == null
-                ? 'Pick start date'
-                : DateFormat('MMMM d, yyyy').format(_startDate!)),
-            onPressed: _pickDate,
-          ),
-          const SizedBox(height: 16),
-          FilledButton(
-            onPressed:
-                _startDate == null ? null : () => widget.onSave(_startDate!),
-            child: const Text('Save'),
+          Icon(Icons.info_outline,
+              size: 16, color: Theme.of(context).colorScheme.outline),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
+            ),
           ),
         ],
       ),

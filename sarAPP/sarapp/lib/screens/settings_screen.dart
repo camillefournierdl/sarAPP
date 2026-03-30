@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../models/entry.dart';
 import '../providers/entries_provider.dart';
 import '../providers/settings_provider.dart';
+import '../services/cycle_service.dart';
 import '../services/export_service.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -36,25 +37,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           content: Text(
               'Switched to ${newMode == "female" ? "Full tracking" : "Mood only"} mode.')),
     );
-  }
-
-  Future<void> _editPeriodDate() async {
-    final settings = context.read<SettingsProvider>().settings;
-    final current = settings.lastPeriodStart != null
-        ? DateTime.parse(settings.lastPeriodStart!)
-        : DateTime.now().subtract(const Duration(days: 14));
-
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: current,
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now(),
-      helpText: 'When did your last period start?',
-    );
-    if (picked == null || !mounted) return;
-    await context
-        .read<SettingsProvider>()
-        .setPeriodBaseline(DateFormat('yyyy-MM-dd').format(picked));
   }
 
   Future<void> _resetData() async {
@@ -94,10 +76,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>().settings;
-    final periodLabel = settings.lastPeriodStart != null
-        ? DateFormat('MMMM d, yyyy')
-            .format(DateTime.parse(settings.lastPeriodStart!))
-        : 'Not set';
 
     return ListView(
       children: [
@@ -112,16 +90,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
           onTap: _switchMode,
         ),
 
-        // ── Cycle baseline (female only) ───────────────────────────────────
+        // ── Questionnaire options (female only) ───────────────────────────
+        if (settings.isFemaleMode) ...[
+          const _Header('Questionnaire'),
+          SwitchListTile(
+            secondary: const Icon(Icons.medical_information_outlined),
+            title: const Text('Track symptoms'),
+            subtitle: const Text('Show the symptoms question in the daily log'),
+            value: settings.showSymptoms,
+            onChanged: (v) => context
+                .read<SettingsProvider>()
+                .update(settings.copyWith(showSymptoms: v)),
+          ),
+        ],
+
+        // ── Cycle stats (female only) ─────────────────────────────────────
         if (settings.isFemaleMode) ...[
           const _Header('Cycle'),
-          ListTile(
-            leading: const Icon(Icons.favorite_outline),
-            title: const Text('Last period start date'),
-            subtitle: Text(periodLabel),
-            trailing: const Icon(Icons.edit, size: 18),
-            onTap: _editPeriodDate,
-          ),
+          _CycleStatsCard(
+              entries: context
+                  .watch<EntriesProvider>()
+                  .entries),
         ],
 
         // ── Data ──────────────────────────────────────────────────────────
@@ -150,6 +139,157 @@ class _SettingsScreenState extends State<SettingsScreen> {
           subtitle: Text('Mood & cycle tracker — data stays on your device'),
         ),
       ],
+    );
+  }
+}
+
+// ── Cycle stats card ──────────────────────────────────────────────────────────
+
+class _CycleStatsCard extends StatelessWidget {
+  final List<Entry> entries;
+  const _CycleStatsCard({required this.entries});
+
+  @override
+  Widget build(BuildContext context) {
+    final stats = CycleService.cycleStats(entries);
+    final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
+
+    String cycleLabel;
+    String cycleNote;
+    if (stats.cyclesLogged == 0) {
+      cycleLabel = '28 days (default)';
+      cycleNote = 'Log at least 2 period starts to personalise';
+    } else {
+      cycleLabel = '${stats.cycleLength} days';
+      cycleNote = 'Based on ${stats.cyclesLogged} '
+          '${stats.cyclesLogged == 1 ? 'cycle' : 'cycles'}';
+    }
+
+    String periodLabel;
+    String periodNote;
+    if (stats.periodsLogged == 0) {
+      periodLabel = '5 days (default)';
+      periodNote = 'Log a period start + end to personalise';
+    } else {
+      periodLabel = '${stats.periodLength} days';
+      periodNote = 'Based on ${stats.periodsLogged} '
+          '${stats.periodsLogged == 1 ? 'period' : 'periods'}';
+    }
+
+    // Derived phases (informational)
+    final C = stats.cycleLength;
+    final P = stats.periodLength;
+    final follicular = C - P - 14; // days between end of period and ovulation
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Your cycle statistics',
+                  style: theme.textTheme.titleSmall
+                      ?.copyWith(color: primary)),
+              const SizedBox(height: 12),
+              _StatRow(
+                label: 'Cycle length',
+                value: cycleLabel,
+                note: cycleNote,
+              ),
+              const SizedBox(height: 8),
+              _StatRow(
+                label: 'Period length',
+                value: periodLabel,
+                note: periodNote,
+              ),
+              if (stats.cyclesLogged > 0 || stats.periodsLogged > 0) ...[
+                const Divider(height: 20),
+                Text('Estimated phases',
+                    style: theme.textTheme.labelSmall
+                        ?.copyWith(color: theme.colorScheme.outline)),
+                const SizedBox(height: 8),
+                _PhaseRow('Menstruation', '$P days', const Color(0xFFEF5350)),
+                _PhaseRow(
+                    'Follicular',
+                    follicular > 0 ? '$follicular days' : '—',
+                    const Color(0xFF66BB6A)),
+                _PhaseRow('Ovulation', '1 day', const Color(0xFF42A5F5)),
+                _PhaseRow('Luteal', '14 days', const Color(0xFFAB47BC)),
+                const SizedBox(height: 4),
+                Text(
+                  'Luteal phase is fixed at 14 days (scientifically constant).',
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.outline),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final String note;
+  const _StatRow(
+      {required this.label, required this.value, required this.note});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+            child: Text(label,
+                style: Theme.of(context).textTheme.bodyMedium)),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(value,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(fontWeight: FontWeight.bold)),
+            Text(note,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.outline)),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _PhaseRow extends StatelessWidget {
+  final String phase;
+  final String duration;
+  final Color color;
+  const _PhaseRow(this.phase, this.duration, this.color);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Container(
+              width: 10,
+              height: 10,
+              decoration:
+                  BoxDecoration(color: color, shape: BoxShape.circle)),
+          const SizedBox(width: 8),
+          Expanded(
+              child: Text(phase,
+                  style: Theme.of(context).textTheme.bodySmall)),
+          Text(duration, style: Theme.of(context).textTheme.bodySmall),
+        ],
+      ),
     );
   }
 }

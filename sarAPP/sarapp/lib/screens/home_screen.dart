@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../models/entry.dart';
 import '../providers/entries_provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/cycle_service.dart';
@@ -78,10 +79,19 @@ class _DashboardTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final entries = context.watch<EntriesProvider>().entries;
     final todayEntry = context.watch<EntriesProvider>().getByDate(today);
     final settings = context.watch<SettingsProvider>().settings;
     final isFemale = settings.isFemaleMode;
     final theme = Theme.of(context);
+
+    // Determine cycle baseline: prefer settings, fall back to most recent logged start
+    final loggedBaseline = entries
+        .where((e) => e.periodStart)
+        .map((e) => e.date)
+        .fold<String?>(null, (best, d) =>
+            best == null || d.compareTo(best) > 0 ? d : best);
+    final cycleBaseline = settings.lastPeriodStart ?? loggedBaseline;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -99,9 +109,11 @@ class _DashboardTab extends StatelessWidget {
         ),
         const SizedBox(height: 16),
 
-        // ── Cycle info card (female mode, baseline set) ──────────────────
-        if (isFemale && settings.lastPeriodStart != null)
-          _CycleInfoCard(lastPeriodStart: settings.lastPeriodStart!),
+        // ── Cycle info card (female mode, any baseline available) ────────
+        if (isFemale && cycleBaseline != null)
+          _CycleInfoCard(
+              lastPeriodStart: cycleBaseline,
+              entries: entries),
 
         const SizedBox(height: 16),
 
@@ -209,11 +221,12 @@ class _DashboardTab extends StatelessWidget {
 
 class _CycleInfoCard extends StatelessWidget {
   final String lastPeriodStart;
-  const _CycleInfoCard({required this.lastPeriodStart});
+  final List<Entry> entries;
+  const _CycleInfoCard(
+      {required this.lastPeriodStart, required this.entries});
 
   @override
   Widget build(BuildContext context) {
-    final entries = context.watch<EntriesProvider>().entries;
     final phase = CycleService.todayPhase(lastPeriodStart, entries: entries);
     final day = CycleService.dayOfCycle(lastPeriodStart, entries: entries);
     final daysLeft =
