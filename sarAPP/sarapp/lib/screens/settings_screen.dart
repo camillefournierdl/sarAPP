@@ -5,6 +5,7 @@ import '../providers/entries_provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/cycle_service.dart';
 import '../services/export_service.dart';
+import '../services/notification_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -37,6 +38,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
           content: Text(
               'Switched to ${newMode == "female" ? "Full tracking" : "Mood only"} mode.')),
     );
+  }
+
+  Future<void> _setReminder(bool enabled, {TimeOfDay? time}) async {
+    final settings = context.read<SettingsProvider>().settings;
+    final hour = time?.hour ?? settings.notificationHour;
+    final minute = time?.minute ?? settings.notificationMinute;
+    await context
+        .read<SettingsProvider>()
+        .setNotification(enabled: enabled, hour: hour, minute: minute);
+    if (enabled) {
+      final granted = await NotificationService.requestPermission();
+      if (!granted || !mounted) return;
+      await NotificationService.scheduleDailyReminder(hour, minute);
+    } else {
+      await NotificationService.cancelAll();
+    }
+  }
+
+  Future<void> _pickTime() async {
+    final settings = context.read<SettingsProvider>().settings;
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(
+          hour: settings.notificationHour,
+          minute: settings.notificationMinute),
+      helpText: 'Pick reminder time',
+    );
+    if (picked == null || !mounted) return;
+    await _setReminder(true, time: picked);
   }
 
   Future<void> _resetData() async {
@@ -112,6 +142,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
           subtitle: const Text('Tap to switch'),
           onTap: _switchMode,
         ),
+
+        // ── Reminder ──────────────────────────────────────────────────────
+        const _Header('Reminder'),
+        SwitchListTile(
+          secondary: const Icon(Icons.notifications_outlined),
+          title: const Text('Daily reminder'),
+          subtitle: const Text('Get a nudge to log your day'),
+          value: settings.notificationsEnabled,
+          onChanged: (v) => _setReminder(v),
+        ),
+        if (settings.notificationsEnabled)
+          ListTile(
+            leading: const Icon(Icons.access_time),
+            title: const Text('Reminder time'),
+            subtitle: Text(TimeOfDay(
+                    hour: settings.notificationHour,
+                    minute: settings.notificationMinute)
+                .format(context)),
+            trailing: const Icon(Icons.edit, size: 18),
+            onTap: _pickTime,
+          ),
 
         // ── Data ──────────────────────────────────────────────────────────
         const _Header('Data'),

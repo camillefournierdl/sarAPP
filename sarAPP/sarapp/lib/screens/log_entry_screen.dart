@@ -174,6 +174,8 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
                         '🌾 Gluten',
                         '🥛 Lactose',
                         '🍬 Sugars',
+                        '🍗 Chicken',
+                        '🐟 Fish',
                       ],
                       selected: _foods,
                       onChanged: (v) => setState(() => _foods = v),
