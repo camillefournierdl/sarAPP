@@ -31,6 +31,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
   late List<String> _foods;
   late List<String> _activities;
   late TextEditingController _notesController;
+  int _step = 0;
 
   @override
   void initState() {
@@ -80,109 +81,164 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isFemale =
-        context.watch<SettingsProvider>().settings.isFemaleMode;
+    final settings = context.watch<SettingsProvider>().settings;
+    final isFemale = settings.isFemaleMode;
     final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
         title: Text(_appBarTitle()),
+        // On step 2, override back to return to step 1 instead of leaving
+        leading: _step == 1
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => setState(() => _step = 0),
+              )
+            : null,
         actions: [
-          TextButton(
-            onPressed: _save,
-            child: const Text('Save'),
+          if (_step == 0)
+            TextButton(
+              onPressed: () => setState(() => _step = 1),
+              child: const Text('Next'),
+            )
+          else
+            TextButton(
+              onPressed: _save,
+              child: const Text('Save'),
+            ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // ── Step indicator ────────────────────────────────────────────
+          _StepDots(current: _step, total: 2),
+
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                // Date
+                Text(
+                  DateFormat('EEEE, MMMM d, yyyy').format(DateTime.parse(_date)),
+                  style: theme.textTheme.titleMedium,
+                ),
+                const SizedBox(height: 24),
+
+                if (_step == 0) ...[
+                  // ── Step 1: Mood ──────────────────────────────────────
+                  _Section(
+                    title: 'How happy did you feel today? (0 – 10)',
+                    child: _HappinessSlider(
+                      value: _happinessScore,
+                      onChanged: (v) => setState(() => _happinessScore = v),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _Section(
+                    title: 'How are you feeling?',
+                    child: EmotionTagSelector(
+                      selected: _emotions,
+                      onChanged: (v) => setState(() => _emotions = v),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  // Forward nudge
+                  Center(
+                    child: FilledButton.icon(
+                      onPressed: () => setState(() => _step = 1),
+                      icon: const Icon(Icons.arrow_forward),
+                      label: const Text('Continue'),
+                    ),
+                  ),
+                ] else ...[
+                  // ── Step 2: Lifestyle ─────────────────────────────────
+                  _Section(
+                    title: 'Physical activity today?',
+                    child: _ChipSelector(
+                      options: const [
+                        '🏋️ Weight lifting',
+                        '🏃 Intense cardio',
+                        '🚴 Endurance',
+                        '💃 Dance',
+                        '🧗 Climbing',
+                      ],
+                      selected: _activities,
+                      onChanged: (v) => setState(() => _activities = v),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _Section(
+                    title: 'What did you eat today?',
+                    child: _ChipSelector(
+                      options: const [
+                        '🌾 Gluten',
+                        '🥛 Lactose',
+                        '🍬 Sugars',
+                      ],
+                      selected: _foods,
+                      onChanged: (v) => setState(() => _foods = v),
+                    ),
+                  ),
+                  if (isFemale && settings.showSymptoms) ...[
+                    const SizedBox(height: 16),
+                    _Section(
+                      title: 'Symptoms',
+                      child: SymptomSelector(
+                        selected: _symptoms,
+                        onChanged: (v) => setState(() => _symptoms = v),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  _Section(
+                    title: 'Notes',
+                    child: TextField(
+                      controller: _notesController,
+                      maxLines: 4,
+                      decoration: const InputDecoration(
+                        hintText: 'Anything else on your mind…',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 32),
+              ],
+            ),
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // Date display
-          Text(
-            DateFormat('EEEE, MMMM d, yyyy').format(DateTime.parse(_date)),
-            style: theme.textTheme.titleMedium,
-          ),
-          const SizedBox(height: 24),
+    );
+  }
+}
 
-          // ── Happiness scale ─────────────────────────────────────────────
-          _Section(
-            title: 'How happy did you feel today? (0 – 10)',
-            child: _HappinessSlider(
-              value: _happinessScore,
-              onChanged: (v) => setState(() => _happinessScore = v),
-            ),
-          ),
+// ── Step dots indicator ───────────────────────────────────────────────────────
 
-          // ── Emotions ───────────────────────────────────────────────────
-          const SizedBox(height: 16),
-          _Section(
-            title: 'How are you feeling?',
-            child: EmotionTagSelector(
-              selected: _emotions,
-              onChanged: (v) => setState(() => _emotions = v),
-            ),
-          ),
+class _StepDots extends StatelessWidget {
+  final int current;
+  final int total;
+  const _StepDots({required this.current, required this.total});
 
-          // ── Physical activity ────────────────────────────────────────────
-          const SizedBox(height: 16),
-          _Section(
-            title: 'Physical activity today?',
-            child: _ChipSelector(
-              options: const [
-                '🏋️ Weight lifting',
-                '🏃 Intense cardio',
-                '🚴 Endurance',
-                '💃 Dance',
-                '🧗 Climbing',
-              ],
-              selected: _activities,
-              onChanged: (v) => setState(() => _activities = v),
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(total, (i) {
+          final active = i == current;
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            width: active ? 20 : 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: active ? primary : primary.withAlpha(60),
+              borderRadius: BorderRadius.circular(4),
             ),
-          ),
-
-          // ── Food ────────────────────────────────────────────────────────
-          const SizedBox(height: 16),
-          _Section(
-            title: 'What did you eat today?',
-            child: _ChipSelector(
-              options: const [
-                '🌾 Gluten',
-                '🥛 Lactose',
-                '🍬 Sugars',
-              ],
-              selected: _foods,
-              onChanged: (v) => setState(() => _foods = v),
-            ),
-          ),
-
-          // ── Symptoms (female + setting enabled) ─────────────────────────
-          if (isFemale &&
-              context.watch<SettingsProvider>().settings.showSymptoms) ...[
-            const SizedBox(height: 16),
-            _Section(
-              title: 'Symptoms',
-              child: SymptomSelector(
-                selected: _symptoms,
-                onChanged: (v) => setState(() => _symptoms = v),
-              ),
-            ),
-          ],
-
-          // ── Notes ───────────────────────────────────────────────────────
-          const SizedBox(height: 16),
-          _Section(
-            title: 'Notes',
-            child: TextField(
-              controller: _notesController,
-              maxLines: 4,
-              decoration: const InputDecoration(
-                hintText: 'Anything else on your mind…',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ),
-          const SizedBox(height: 32),
-        ],
+          );
+        }),
       ),
     );
   }

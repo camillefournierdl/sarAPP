@@ -79,16 +79,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return ListView(
       children: [
-        // ── Tracking mode ─────────────────────────────────────────────────
-        const _Header('Tracking'),
-        ListTile(
-          leading: const Icon(Icons.swap_horiz),
-          title: Text(settings.isFemaleMode
-              ? 'Mode: Full tracking (mood + cycle)'
-              : 'Mode: Mood only'),
-          subtitle: const Text('Tap to switch'),
-          onTap: _switchMode,
-        ),
+        // ── Cycle stats (female only) ─────────────────────────────────────
+        if (settings.isFemaleMode) ...[
+          const _Header('Cycle'),
+          _CycleStatsCard(
+              entries: context
+                  .watch<EntriesProvider>()
+                  .entries),
+        ],
 
         // ── Questionnaire options (female only) ───────────────────────────
         if (settings.isFemaleMode) ...[
@@ -104,14 +102,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ],
 
-        // ── Cycle stats (female only) ─────────────────────────────────────
-        if (settings.isFemaleMode) ...[
-          const _Header('Cycle'),
-          _CycleStatsCard(
-              entries: context
-                  .watch<EntriesProvider>()
-                  .entries),
-        ],
+        // ── Tracking mode ─────────────────────────────────────────────────
+        const _Header('Tracking'),
+        ListTile(
+          leading: const Icon(Icons.swap_horiz),
+          title: Text(settings.isFemaleMode
+              ? 'Mode: Full tracking (mood + cycle)'
+              : 'Mode: Mood only'),
+          subtitle: const Text('Tap to switch'),
+          onTap: _switchMode,
+        ),
 
         // ── Data ──────────────────────────────────────────────────────────
         const _Header('Data'),
