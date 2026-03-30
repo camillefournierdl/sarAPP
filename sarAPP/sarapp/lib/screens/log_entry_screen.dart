@@ -5,7 +5,6 @@ import '../models/entry.dart';
 import '../providers/entries_provider.dart';
 import '../providers/settings_provider.dart';
 import '../widgets/emotion_tag_selector.dart';
-import '../widgets/cycle_phase_selector.dart';
 import '../widgets/symptom_selector.dart';
 
 class LogEntryScreen extends StatefulWidget {
@@ -105,57 +104,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
           ),
           const SizedBox(height: 24),
 
-          // ── Emotions ───────────────────────────────────────────────────
-          _Section(
-            title: 'How are you feeling?',
-            child: EmotionTagSelector(
-              selected: _emotions,
-              onChanged: (v) => setState(() => _emotions = v),
-            ),
-          ),
-
-          // ── Cycle (female only) ────────────────────────────────────────
-          if (isFemale) ...[
-            const SizedBox(height: 16),
-            _Section(
-              title: 'Cycle phase',
-              child: CyclePhaseSelector(
-                selected: _cyclePhase,
-                onChanged: (v) => setState(() => _cyclePhase = v),
-              ),
-            ),
-            const SizedBox(height: 16),
-            _Section(
-              title: 'Period',
-              child: Column(
-                children: [
-                  SwitchListTile(
-                    title: const Text('Period started today'),
-                    value: _periodStart,
-                    onChanged: (v) => setState(() => _periodStart = v),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                  SwitchListTile(
-                    title: const Text('Period ended today'),
-                    value: _periodEnd,
-                    onChanged: (v) => setState(() => _periodEnd = v),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            _Section(
-              title: 'Symptoms',
-              child: SymptomSelector(
-                selected: _symptoms,
-                onChanged: (v) => setState(() => _symptoms = v),
-              ),
-            ),
-          ],
-
           // ── Happiness scale ─────────────────────────────────────────────
-          const SizedBox(height: 16),
           _Section(
             title: 'How happy did you feel today? (0 – 10)',
             child: _HappinessSlider(
@@ -164,14 +113,13 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
             ),
           ),
 
-          // ── Food ────────────────────────────────────────────────────────
+          // ── Emotions ───────────────────────────────────────────────────
           const SizedBox(height: 16),
           _Section(
-            title: 'What did you eat today?',
-            child: _ChipSelector(
-              options: const ['Gluten', 'Lactose', 'Sugars'],
-              selected: _foods,
-              onChanged: (v) => setState(() => _foods = v),
+            title: 'How are you feeling?',
+            child: EmotionTagSelector(
+              selected: _emotions,
+              onChanged: (v) => setState(() => _emotions = v),
             ),
           ),
 
@@ -190,6 +138,29 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
               onChanged: (v) => setState(() => _activities = v),
             ),
           ),
+
+          // ── Food ────────────────────────────────────────────────────────
+          const SizedBox(height: 16),
+          _Section(
+            title: 'What did you eat today?',
+            child: _ChipSelector(
+              options: const ['Gluten', 'Lactose', 'Sugars'],
+              selected: _foods,
+              onChanged: (v) => setState(() => _foods = v),
+            ),
+          ),
+
+          // ── Symptoms (female only) ───────────────────────────────────────
+          if (isFemale) ...[
+            const SizedBox(height: 16),
+            _Section(
+              title: 'Symptoms',
+              child: SymptomSelector(
+                selected: _symptoms,
+                onChanged: (v) => setState(() => _symptoms = v),
+              ),
+            ),
+          ],
 
           // ── Notes ───────────────────────────────────────────────────────
           const SizedBox(height: 16),

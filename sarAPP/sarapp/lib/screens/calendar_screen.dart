@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
 
+import '../models/entry.dart';
 import '../providers/entries_provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/cycle_service.dart';
@@ -93,6 +94,7 @@ class _CycleCalendarTabState extends State<_CycleCalendarTab> {
       setState(() => _phases = {});
       return;
     }
+    final entries = context.read<EntriesProvider>().entries;
     final rangeStart =
         DateTime(_focusedDay.year, _focusedDay.month - 2, 1);
     final rangeEnd =
@@ -102,6 +104,7 @@ class _CycleCalendarTabState extends State<_CycleCalendarTab> {
         lastPeriodStart: DateTime.parse(lastPeriodStart),
         rangeStart: rangeStart,
         rangeEnd: rangeEnd,
+        entries: entries,
       );
     });
   }
@@ -145,20 +148,54 @@ class _CycleCalendarTabState extends State<_CycleCalendarTab> {
               _selectedDay = selected;
               _focusedDay = focused;
             });
-            if (!selected.isAfter(DateTime.now())) {
-              _openEntry(
-                  context, DateFormat('yyyy-MM-dd').format(selected));
-            }
           },
           onPageChanged: (focused) {
             _focusedDay = focused;
             _refreshPhases();
           },
           entries: entries,
-          dayColorBuilder: (day) => _phases[_dateOnly(day)] != null
-              ? cyclePhaseColor(_phases[_dateOnly(day)])
-              : null,
+          dayColorBuilder: (day) {
+            final phase = _phases[_dateOnly(day)];
+            return phase != null
+                ? cyclePhaseColor(phase)?.withAlpha(95)
+                : null;
+          },
         ),
+
+        // Period logging panel for selected day
+        if (_selectedDay != null &&
+            !_selectedDay!.isAfter(DateTime.now())) ...[
+          const Divider(height: 1),
+          _PeriodDayPanel(
+            day: _selectedDay!,
+            entry: entries.cast<dynamic>().firstWhere(
+                  (e) => e.date ==
+                      DateFormat('yyyy-MM-dd').format(_selectedDay!),
+                  orElse: () => null,
+                ),
+            onChanged: (periodStart, periodEnd) async {
+              final dateStr =
+                  DateFormat('yyyy-MM-dd').format(_selectedDay!);
+              final existing = context
+                  .read<EntriesProvider>()
+                  .getByDate(dateStr);
+              final updated = Entry.create(
+                date: dateStr,
+                emotions: existing?.emotions ?? [],
+                cyclePhase: existing?.cyclePhase,
+                periodStart: periodStart,
+                periodEnd: periodEnd,
+                symptoms: existing?.symptoms ?? [],
+                happinessScore: existing?.happinessScore,
+                foods: existing?.foods ?? [],
+                activities: existing?.activities ?? [],
+                notes: existing?.notes ?? '',
+              );
+              await context.read<EntriesProvider>().saveEntry(updated);
+              _refreshPhases();
+            },
+          ),
+        ],
 
         // Phase legend
         if (settings.lastPeriodStart != null) ...[
@@ -175,6 +212,23 @@ class _CycleCalendarTabState extends State<_CycleCalendarTab> {
 
 // ── Mood calendar tab ──────────────────────────────────────────────────────────
 
+/// Blue → grey (3.5) → yellow (8) → warm gold (10)
+Color _happinessColor(int score) {
+  const blue   = Color(0xFF5C9BD6);
+  const grey   = Color(0xFFB0BEC5);
+  const yellow = Color(0xFFFDD835);
+  const gold   = Color(0xFFFEC428);
+
+  final t = score.clamp(0, 10) / 10.0;
+  if (t <= 0.35) {
+    return Color.lerp(blue,   grey,   t / 0.35)!;
+  } else if (t <= 0.8) {
+    return Color.lerp(grey,   yellow, (t - 0.35) / 0.45)!;
+  } else {
+    return Color.lerp(yellow, gold,   (t - 0.8)  / 0.20)!;
+  }
+}
+
 class _MoodCalendarTab extends StatefulWidget {
   const _MoodCalendarTab();
 
@@ -185,19 +239,32 @@ class _MoodCalendarTab extends StatefulWidget {
 class _MoodCalendarTabState extends State<_MoodCalendarTab> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+  // null = happiness mode; an emotion value = filter to that emotion
+  String? _filterEmotion;
+
+  Color? _colorForDay(DateTime day, List<dynamic> entries) {
+    final dateStr = DateFormat('yyyy-MM-dd').format(day);
+    try {
+      final entry = entries.firstWhere((e) => e.date == dateStr);
+      if (_filterEmotion == null) {
+        // Happiness mode: color by score, no color if not rated
+        return entry.happinessScore != null
+            ? _happinessColor(entry.happinessScore as int)
+            : null;
+      } else {
+        // Emotion filter mode: full color if selected, faint grey if not
+        return (entry.emotions as List).contains(_filterEmotion)
+            ? emotionColor(_filterEmotion!)
+            : Colors.grey.withAlpha(40);
+      }
+    } catch (_) {
+      return null; // no entry for this day
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final entries = context.watch<EntriesProvider>().entries;
-
-    // Build date → first-emotion-color map from logged entries
-    final moodColors = <DateTime, Color>{};
-    for (final e in entries) {
-      if (e.emotions.isNotEmpty) {
-        moodColors[_dateOnly(DateTime.parse(e.date))] =
-            emotionColor(e.emotions.first);
-      }
-    }
 
     return Column(
       children: [
@@ -210,21 +277,23 @@ class _MoodCalendarTabState extends State<_MoodCalendarTab> {
               _focusedDay = focused;
             });
             if (!selected.isAfter(DateTime.now())) {
-              _openEntry(
-                  context, DateFormat('yyyy-MM-dd').format(selected));
+              _openEntry(context, DateFormat('yyyy-MM-dd').format(selected));
             }
           },
-          onPageChanged: (focused) =>
-              setState(() => _focusedDay = focused),
+          onPageChanged: (focused) => setState(() => _focusedDay = focused),
           entries: entries,
-          dayColorBuilder: (day) => moodColors[_dateOnly(day)],
+          dayColorBuilder: (day) => _colorForDay(day, entries),
         ),
 
-        // Emotion legend
+        // Interactive legend
         const Divider(height: 1),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: _EmotionLegend(),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: _InteractiveMoodLegend(
+            selectedEmotion: _filterEmotion,
+            onSelected: (value) =>
+                setState(() => _filterEmotion = value),
+          ),
         ),
       ],
     );
@@ -320,13 +389,13 @@ class _DayCell extends StatelessWidget {
       );
     } else if (isToday) {
       decoration = BoxDecoration(
-        color: color?.withAlpha(180) ?? primary.withAlpha(60),
+        color: color ?? primary.withAlpha(60),
         shape: BoxShape.circle,
         border: Border.all(color: primary, width: 2),
       );
     } else if (color != null) {
       decoration = BoxDecoration(
-        color: color!.withAlpha(90),
+        color: color,
         shape: BoxShape.circle,
       );
     } else {
@@ -341,7 +410,13 @@ class _DayCell extends StatelessWidget {
           '${day.day}',
           style: TextStyle(
             fontSize: 13,
-            color: isSelected ? Colors.white : null,
+            color: isSelected
+                ? Colors.white
+                : color != null
+                    ? (color!.computeLuminance() < 0.35
+                        ? Colors.white
+                        : Colors.black87)
+                    : null,
             fontWeight: isToday || isSelected ? FontWeight.bold : null,
           ),
         ),
@@ -371,17 +446,174 @@ class _PhaseLegend extends StatelessWidget {
   }
 }
 
-class _EmotionLegend extends StatelessWidget {
-  const _EmotionLegend();
+/// Interactive legend for the mood calendar.
+/// Shows a happiness gradient chip (default) and one chip per emotion.
+/// Tapping an emotion chip filters the calendar to days where it was logged.
+/// Tapping it again (or tapping the happiness chip) returns to default.
+class _InteractiveMoodLegend extends StatelessWidget {
+  final String? selectedEmotion; // null = happiness mode
+  final ValueChanged<String?> onSelected;
+
+  const _InteractiveMoodLegend({
+    required this.selectedEmotion,
+    required this.onSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 12,
-      runSpacing: 4,
-      children: emotions
-          .map((e) => _LegendDot(e.label.split(' ').last, e.color))
-          .toList(),
+    final happinessSelected = selectedEmotion == null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Happiness gradient chip ──────────────────────────────────────
+        GestureDetector(
+          onTap: () => onSelected(null),
+          child: Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: happinessSelected
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.transparent,
+                width: 2,
+              ),
+              color: happinessSelected
+                  ? Theme.of(context).colorScheme.primaryContainer
+                  : Colors.transparent,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Gradient strip
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: SizedBox(
+                    width: 48,
+                    height: 10,
+                    child: DecoratedBox(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Color(0xFF5C9BD6), // blue   = 0
+                            Color(0xFFB0BEC5), // grey   ≈ 3.5
+                            Color(0xFFFDD835), // yellow = 8
+                            Color(0xFFFEC428), // gold   = 10
+                          ],
+                          stops: [0.0, 0.35, 0.8, 1.0],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                const Text('Happiness', style: TextStyle(fontSize: 12)),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+
+        // ── Emotion filter chips ─────────────────────────────────────────
+        Wrap(
+          spacing: 6,
+          runSpacing: 4,
+          children: emotions.map((e) {
+            final isSelected = selectedEmotion == e.value;
+            return GestureDetector(
+              onTap: () =>
+                  onSelected(isSelected ? null : e.value),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: isSelected
+                      ? e.color.withAlpha(200)
+                      : e.color.withAlpha(50),
+                  border: Border.all(
+                    color: isSelected ? e.color : Colors.transparent,
+                    width: 1.5,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                          color: e.color, shape: BoxShape.circle),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      e.label.split(' ').last,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Period day panel ───────────────────────────────────────────────────────────
+
+class _PeriodDayPanel extends StatelessWidget {
+  final DateTime day;
+  final dynamic entry; // Entry? — untyped to avoid import issues at call site
+  final void Function(bool periodStart, bool periodEnd) onChanged;
+
+  const _PeriodDayPanel({
+    required this.day,
+    required this.entry,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bool periodStart = (entry?.periodStart as bool?) ?? false;
+    final bool periodEnd = (entry?.periodEnd as bool?) ?? false;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            DateFormat('EEEE, MMMM d').format(day),
+            style: Theme.of(context)
+                .textTheme
+                .labelLarge
+                ?.copyWith(color: Theme.of(context).colorScheme.primary),
+          ),
+          SwitchListTile(
+            title: const Text('Period started on this day'),
+            value: periodStart,
+            onChanged: (v) => onChanged(v, periodEnd),
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+          ),
+          SwitchListTile(
+            title: const Text('Period ended on this day'),
+            value: periodEnd,
+            onChanged: (v) => onChanged(periodStart, v),
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+          ),
+        ],
+      ),
     );
   }
 }

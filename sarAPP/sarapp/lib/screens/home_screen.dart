@@ -21,6 +21,24 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _tab = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _openTodayIfNeeded());
+  }
+
+  void _openTodayIfNeeded() {
+    if (!mounted) return;
+    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final hasEntry =
+        context.read<EntriesProvider>().getByDate(today) != null;
+    if (!hasEntry) {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const LogEntryScreen()),
+      );
+    }
+  }
+
   static const _tabs = [
     _DashboardTab(),
     HistoryScreen(),
@@ -195,9 +213,11 @@ class _CycleInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final phase = CycleService.todayPhase(lastPeriodStart);
-    final day = CycleService.dayOfCycle(lastPeriodStart);
-    final daysLeft = CycleService.daysUntilNextPeriod(lastPeriodStart);
+    final entries = context.watch<EntriesProvider>().entries;
+    final phase = CycleService.todayPhase(lastPeriodStart, entries: entries);
+    final day = CycleService.dayOfCycle(lastPeriodStart, entries: entries);
+    final daysLeft =
+        CycleService.daysUntilNextPeriod(lastPeriodStart, entries: entries);
     final color = cyclePhaseColor(phase);
 
     return Card(
