@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/entry.dart';
+import '../models/app_module.dart';
 import '../providers/entries_provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/cycle_service.dart';
@@ -118,19 +119,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   .entries),
         ],
 
-        // ── Questionnaire options (female only) ───────────────────────────
-        if (settings.isFemaleMode) ...[
-          const _Header('Questionnaire'),
-          SwitchListTile(
-            secondary: const Icon(Icons.medical_information_outlined),
-            title: const Text('Track symptoms'),
-            subtitle: const Text('Show the symptoms question in the daily log'),
-            value: settings.showSymptoms,
-            onChanged: (v) => context
-                .read<SettingsProvider>()
-                .update(settings.copyWith(showSymptoms: v)),
-          ),
-        ],
+        // ── Questionnaire modules ─────────────────────────────────────────
+        const _Header('Questionnaire modules'),
+        ...AppModule.all
+            .where((m) => !m.femaleOnly || settings.isFemaleMode)
+            .map((m) => SwitchListTile(
+                  secondary: Text(m.emoji,
+                      style: const TextStyle(fontSize: 20)),
+                  title: Text(m.label),
+                  subtitle: Text(m.description),
+                  value: settings.isModuleEnabled(m.key),
+                  onChanged: (_) => context
+                      .read<SettingsProvider>()
+                      .update(settings.withModuleToggled(m.key)),
+                )),
 
         // ── Tracking mode ─────────────────────────────────────────────────
         const _Header('Tracking'),

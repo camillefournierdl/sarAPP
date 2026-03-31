@@ -40,7 +40,7 @@ class SettingsProvider extends ChangeNotifier {
       notificationsEnabled: _settings.notificationsEnabled,
       onboardingComplete: _settings.onboardingComplete,
       lastPeriodStart: null,
-      showSymptoms: _settings.showSymptoms,
+      enabledModules: _settings.enabledModules,
     );
     await DatabaseService.saveSettings(_settings);
     notifyListeners();

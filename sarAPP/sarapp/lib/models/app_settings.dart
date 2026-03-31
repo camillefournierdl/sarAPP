@@ -1,11 +1,13 @@
+import 'app_module.dart';
+
 class AppSettings {
   final String userMode; // 'female' or 'male'
   final int notificationHour;
   final int notificationMinute;
   final bool notificationsEnabled;
   final bool onboardingComplete;
-  final String? lastPeriodStart; // YYYY-MM-DD of most recent period start
-  final bool showSymptoms; // whether the symptoms question appears in the log form
+  final String? lastPeriodStart;
+  final Set<String> enabledModules;
 
   const AppSettings({
     this.userMode = 'female',
@@ -14,8 +16,14 @@ class AppSettings {
     this.notificationsEnabled = false,
     this.onboardingComplete = false,
     this.lastPeriodStart,
-    this.showSymptoms = false,
+    this.enabledModules = const {
+      'happiness', 'emotions', 'sleep', 'activity', 'food', 'notes'
+    },
   });
+
+  bool get isFemaleMode => userMode == 'female';
+
+  bool isModuleEnabled(String key) => enabledModules.contains(key);
 
   AppSettings copyWith({
     String? userMode,
@@ -24,7 +32,7 @@ class AppSettings {
     bool? notificationsEnabled,
     bool? onboardingComplete,
     String? lastPeriodStart,
-    bool? showSymptoms,
+    Set<String>? enabledModules,
   }) =>
       AppSettings(
         userMode: userMode ?? this.userMode,
@@ -33,8 +41,17 @@ class AppSettings {
         notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
         onboardingComplete: onboardingComplete ?? this.onboardingComplete,
         lastPeriodStart: lastPeriodStart ?? this.lastPeriodStart,
-        showSymptoms: showSymptoms ?? this.showSymptoms,
+        enabledModules: enabledModules ?? this.enabledModules,
       );
 
-  bool get isFemaleMode => userMode == 'female';
+  /// Returns a copy with [key] toggled on or off.
+  AppSettings withModuleToggled(String key) {
+    final updated = Set<String>.from(enabledModules);
+    if (updated.contains(key)) {
+      updated.remove(key);
+    } else {
+      updated.add(key);
+    }
+    return copyWith(enabledModules: updated);
+  }
 }

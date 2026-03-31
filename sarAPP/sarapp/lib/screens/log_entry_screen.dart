@@ -129,33 +129,39 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
 
                 if (_step == 0) ...[
                   // ── Step 1: Mood ──────────────────────────────────────
-                  _Section(
-                    title: 'How happy did you feel today? (0 – 10)',
-                    child: _HappinessSlider(
-                      value: _happinessScore,
-                      onChanged: (v) => setState(() => _happinessScore = v),
+                  if (settings.isModuleEnabled('happiness')) ...[
+                    _Section(
+                      title: 'How happy did you feel today? (0 – 10)',
+                      child: _HappinessSlider(
+                        value: _happinessScore,
+                        onChanged: (v) => setState(() => _happinessScore = v),
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 16),
+                  ],
+                  if (settings.isModuleEnabled('emotions')) ...[
+                    _Section(
+                      title: 'How are you feeling?',
+                      child: EmotionTagSelector(
+                        selected: _emotions,
+                        onChanged: (v) => setState(() => _emotions = v),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  if (settings.isModuleEnabled('sleep')) ...[
+                    _Section(
+                      title: 'Overall, how well-rested did you feel with your sleep last night? (0 – 10)',
+                      child: _HappinessSlider(
+                        value: _sleepScore,
+                        onChanged: (v) => setState(() => _sleepScore = v),
+                        labelLow: '🪫',
+                        labelHigh: '🔋',
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   const SizedBox(height: 16),
-                  _Section(
-                    title: 'How are you feeling?',
-                    child: EmotionTagSelector(
-                      selected: _emotions,
-                      onChanged: (v) => setState(() => _emotions = v),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _Section(
-                    title: 'Overall, how well-rested did you feel with your sleep last night? (0 – 10)',
-                    child: _HappinessSlider(
-                      value: _sleepScore,
-                      onChanged: (v) => setState(() => _sleepScore = v),
-                      labelLow: '🪫',
-                      labelHigh: '🔋',
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  // Forward nudge
                   Center(
                     child: FilledButton.icon(
                       onPressed: () => setState(() => _step = 1),
@@ -165,37 +171,41 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
                   ),
                 ] else ...[
                   // ── Step 2: Lifestyle ─────────────────────────────────
-                  _Section(
-                    title: 'Physical activity today?',
-                    child: _ChipSelector(
-                      options: const [
-                        '🏋️ Weight lifting',
-                        '🏃 Intense cardio',
-                        '🚴 Endurance',
-                        '💃 Dance',
-                        '🧗 Climbing',
-                      ],
-                      selected: _activities,
-                      onChanged: (v) => setState(() => _activities = v),
+                  if (settings.isModuleEnabled('activity')) ...[
+                    _Section(
+                      title: 'Physical activity today?',
+                      child: _ChipSelector(
+                        options: const [
+                          '🏋️ Weight lifting',
+                          '🏃 Intense cardio',
+                          '🚴 Endurance',
+                          '💃 Dance',
+                          '🧗 Climbing',
+                        ],
+                        selected: _activities,
+                        onChanged: (v) => setState(() => _activities = v),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  _Section(
-                    title: 'What did you eat today?',
-                    child: _ChipSelector(
-                      options: const [
-                        '🌾 Gluten',
-                        '🥛 Lactose',
-                        '🍬 Sugars',
-                        '🍗 Chicken',
-                        '🐟 Fish',
-                      ],
-                      selected: _foods,
-                      onChanged: (v) => setState(() => _foods = v),
-                    ),
-                  ),
-                  if (isFemale && settings.showSymptoms) ...[
                     const SizedBox(height: 16),
+                  ],
+                  if (settings.isModuleEnabled('food')) ...[
+                    _Section(
+                      title: 'What did you eat today?',
+                      child: _ChipSelector(
+                        options: const [
+                          '🌾 Gluten',
+                          '🥛 Lactose',
+                          '🍬 Sugars',
+                          '🍗 Chicken',
+                          '🐟 Fish',
+                        ],
+                        selected: _foods,
+                        onChanged: (v) => setState(() => _foods = v),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  if (isFemale && settings.isModuleEnabled('symptoms')) ...[
                     _Section(
                       title: 'Symptoms',
                       child: SymptomSelector(
@@ -203,19 +213,20 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
                         onChanged: (v) => setState(() => _symptoms = v),
                       ),
                     ),
+                    const SizedBox(height: 16),
                   ],
-                  const SizedBox(height: 16),
-                  _Section(
-                    title: 'Notes',
-                    child: TextField(
-                      controller: _notesController,
-                      maxLines: 4,
-                      decoration: const InputDecoration(
-                        hintText: 'Anything else on your mind…',
-                        border: OutlineInputBorder(),
+                  if (settings.isModuleEnabled('notes'))
+                    _Section(
+                      title: 'Notes',
+                      child: TextField(
+                        controller: _notesController,
+                        maxLines: 4,
+                        decoration: const InputDecoration(
+                          hintText: 'Anything else on your mind…',
+                          border: OutlineInputBorder(),
+                        ),
                       ),
                     ),
-                  ),
                 ],
                 const SizedBox(height: 32),
               ],

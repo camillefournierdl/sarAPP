@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
-import '../models/entry.dart';
+import '../models/app_module.dart';
 import '../models/app_settings.dart';
+import '../models/entry.dart';
 
 class DatabaseService {
   static Database? _db;
@@ -108,6 +110,16 @@ class DatabaseService {
     await db.delete('settings', where: 'key = ?', whereArgs: [key]);
   }
 
+  /// Parses a JSON-encoded list of module keys, falling back to defaults.
+  static Set<String> _parseModules(String? raw) {
+    if (raw == null) return AppModule.defaultEnabled;
+    try {
+      return Set<String>.from(jsonDecode(raw) as List);
+    } catch (_) {
+      return AppModule.defaultEnabled;
+    }
+  }
+
   static Future<String?> _getSetting(String key) async {
     final db = await database;
     final rows =
@@ -127,7 +139,7 @@ class DatabaseService {
       onboardingComplete:
           (await _getSetting('onboarding_complete')) == 'true',
       lastPeriodStart: await _getSetting('last_period_start'),
-      showSymptoms: (await _getSetting('show_symptoms')) == 'true',
+      enabledModules: _parseModules(await _getSetting('enabled_modules')),
     );
   }
 
@@ -138,7 +150,7 @@ class DatabaseService {
     await _saveSetting(
         'notifications_enabled', s.notificationsEnabled.toString());
     await _saveSetting('onboarding_complete', s.onboardingComplete.toString());
-    await _saveSetting('show_symptoms', s.showSymptoms.toString());
+    await _saveSetting('enabled_modules', jsonEncode(s.enabledModules.toList()));
     if (s.lastPeriodStart != null) {
       await _saveSetting('last_period_start', s.lastPeriodStart!);
     } else {
