@@ -28,6 +28,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
   late List<String> _symptoms;
   // null = user hasn't rated; becomes 0–10 once the slider is touched
   int? _happinessScore;
+  int? _sleepScore;
   late List<String> _foods;
   late List<String> _activities;
   late TextEditingController _notesController;
@@ -44,6 +45,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
     _periodEnd = e?.periodEnd ?? false;
     _symptoms = List.from(e?.symptoms ?? []);
     _happinessScore = e?.happinessScore;
+    _sleepScore = e?.sleepScore;
     _foods = List.from(e?.foods ?? []);
     _activities = List.from(e?.activities ?? []);
     _notesController = TextEditingController(text: e?.notes ?? '');
@@ -70,6 +72,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
       periodEnd: _periodEnd,
       symptoms: _symptoms,
       happinessScore: _happinessScore,
+      sleepScore: _sleepScore,
       foods: _foods,
       activities: _activities,
       notes: _notesController.text.trim(),
@@ -139,6 +142,16 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
                     child: EmotionTagSelector(
                       selected: _emotions,
                       onChanged: (v) => setState(() => _emotions = v),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _Section(
+                    title: 'Overall, how well-rested did you feel with your sleep last night? (0 – 10)',
+                    child: _HappinessSlider(
+                      value: _sleepScore,
+                      onChanged: (v) => setState(() => _sleepScore = v),
+                      labelLow: '🪫',
+                      labelHigh: '🔋',
                     ),
                   ),
                   const SizedBox(height: 32),
@@ -251,15 +264,22 @@ class _StepDots extends StatelessWidget {
 class _HappinessSlider extends StatelessWidget {
   final int? value;
   final ValueChanged<int?> onChanged;
+  final String labelLow;
+  final String labelHigh;
 
-  const _HappinessSlider({required this.value, required this.onChanged});
+  const _HappinessSlider({
+    required this.value,
+    required this.onChanged,
+    this.labelLow = '0',
+    this.labelHigh = '10',
+  });
 
   @override
   Widget build(BuildContext context) {
     final primary = Theme.of(context).colorScheme.primary;
     return Row(
       children: [
-        const Text('0', style: TextStyle(fontSize: 12)),
+        Text(labelLow, style: const TextStyle(fontSize: 16)),
         Expanded(
           child: Slider(
             value: (value ?? 5).toDouble(),
@@ -270,9 +290,8 @@ class _HappinessSlider extends StatelessWidget {
             onChanged: (v) => onChanged(v.round()),
           ),
         ),
-        const Text('10', style: TextStyle(fontSize: 12)),
+        Text(labelHigh, style: const TextStyle(fontSize: 16)),
         const SizedBox(width: 8),
-        // Shows the current value, or "—" if untouched
         SizedBox(
           width: 36,
           child: Text(

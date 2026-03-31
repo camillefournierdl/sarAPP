@@ -12,8 +12,19 @@ class NotificationService {
 
   static Future<void> init() async {
     tz_data.initializeTimeZones();
-    final timeZoneName = await FlutterTimezone.getLocalTimezone();
-    tz.setLocalLocation(tz.getLocation(timeZoneName));
+    try {
+      final timeZoneName = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(timeZoneName));
+    } catch (_) {
+      // Fall back to UTC offset so scheduling still fires at roughly the right time
+      final hours = DateTime.now().timeZoneOffset.inHours;
+      final sign = hours <= 0 ? '+' : '-'; // Etc/GMT sign is inverted
+      try {
+        tz.setLocalLocation(tz.getLocation('Etc/GMT$sign${hours.abs()}'));
+      } catch (_) {
+        tz.setLocalLocation(tz.UTC);
+      }
+    }
 
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     await _plugin.initialize(const InitializationSettings(android: android));

@@ -27,6 +27,7 @@ class DatabaseService {
             period_end       INTEGER NOT NULL DEFAULT 0,
             symptoms         TEXT    NOT NULL DEFAULT '[]',
             happiness_score  INTEGER,
+            sleep_score      INTEGER,
             foods            TEXT    NOT NULL DEFAULT '[]',
             activities       TEXT    NOT NULL DEFAULT '[]',
             notes            TEXT    NOT NULL DEFAULT '',
@@ -50,8 +51,13 @@ class DatabaseService {
           await db.execute(
               "ALTER TABLE entries ADD COLUMN activities TEXT NOT NULL DEFAULT '[]'");
         }
+        // v2 → v3: add sleep_score column
+        if (oldVersion < 3) {
+          await db.execute(
+              'ALTER TABLE entries ADD COLUMN sleep_score INTEGER');
+        }
       },
-      version: 2,
+      version: 3,
     );
   }
 

@@ -9,6 +9,7 @@ class Entry {
   final bool periodEnd;
   final List<String> symptoms;
   final int? happinessScore; // 0–10, null = not answered
+  final int? sleepScore;     // 0–10, null = not answered
   final List<String> foods; // e.g. ['gluten', 'lactose']
   final List<String> activities; // e.g. ['weight_lifting', 'cardio']
   final String notes;
@@ -23,6 +24,7 @@ class Entry {
     this.periodEnd = false,
     this.symptoms = const [],
     this.happinessScore,
+    this.sleepScore,
     this.foods = const [],
     this.activities = const [],
     this.notes = '',
@@ -37,6 +39,7 @@ class Entry {
     bool periodEnd = false,
     List<String> symptoms = const [],
     int? happinessScore,
+    int? sleepScore,
     List<String> foods = const [],
     List<String> activities = const [],
     String notes = '',
@@ -49,6 +52,7 @@ class Entry {
         periodEnd: periodEnd,
         symptoms: symptoms,
         happinessScore: happinessScore,
+        sleepScore: sleepScore,
         foods: foods,
         activities: activities,
         notes: notes,
@@ -64,6 +68,7 @@ class Entry {
         'period_end': periodEnd ? 1 : 0,
         'symptoms': jsonEncode(symptoms),
         'happiness_score': happinessScore,
+        'sleep_score': sleepScore,
         'foods': jsonEncode(foods),
         'activities': jsonEncode(activities),
         'notes': notes,
@@ -81,6 +86,7 @@ class Entry {
         symptoms: List<String>.from(
             jsonDecode(map['symptoms'] as String? ?? '[]')),
         happinessScore: map['happiness_score'] as int?,
+        sleepScore: map['sleep_score'] as int?,
         foods: List<String>.from(
             jsonDecode(map['foods'] as String? ?? '[]')),
         activities: List<String>.from(
@@ -93,6 +99,7 @@ class Entry {
   bool get hasData =>
       emotions.isNotEmpty ||
       happinessScore != null ||
+      sleepScore != null ||
       activities.isNotEmpty ||
       foods.isNotEmpty ||
       symptoms.isNotEmpty ||

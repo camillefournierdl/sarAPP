@@ -227,6 +227,7 @@ class _CycleCalendarTabState extends State<_CycleCalendarTab> {
                 periodEnd: periodEnd,
                 symptoms: existing?.symptoms ?? [],
                 happinessScore: existing?.happinessScore,
+                sleepScore: existing?.sleepScore,
                 foods: existing?.foods ?? [],
                 activities: existing?.activities ?? [],
                 notes: existing?.notes ?? '',
