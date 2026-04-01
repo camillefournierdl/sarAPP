@@ -30,6 +30,8 @@ class DatabaseService {
             symptoms         TEXT    NOT NULL DEFAULT '[]',
             happiness_score  INTEGER,
             sleep_score      INTEGER,
+            weather_score    INTEGER,
+            work_day         TEXT,
             foods            TEXT    NOT NULL DEFAULT '[]',
             activities       TEXT    NOT NULL DEFAULT '[]',
             notes            TEXT    NOT NULL DEFAULT '',
@@ -58,8 +60,18 @@ class DatabaseService {
           await db.execute(
               'ALTER TABLE entries ADD COLUMN sleep_score INTEGER');
         }
+        // v3 → v4: add weather_score column
+        if (oldVersion < 4) {
+          await db.execute(
+              'ALTER TABLE entries ADD COLUMN weather_score INTEGER');
+        }
+        // v4 → v5: add work_day column
+        if (oldVersion < 5) {
+          await db.execute(
+              'ALTER TABLE entries ADD COLUMN work_day TEXT');
+        }
       },
-      version: 3,
+      version: 5,
     );
   }
 
@@ -129,7 +141,8 @@ class DatabaseService {
 
   static Future<AppSettings> loadSettings() async {
     return AppSettings(
-      userMode: await _getSetting('user_mode') ?? 'female',
+      menstruationTracking:
+          (await _getSetting('menstruation_tracking') ?? 'true') == 'true',
       notificationHour:
           int.tryParse(await _getSetting('notification_hour') ?? '20') ?? 20,
       notificationMinute:
@@ -140,17 +153,26 @@ class DatabaseService {
           (await _getSetting('onboarding_complete')) == 'true',
       lastPeriodStart: await _getSetting('last_period_start'),
       enabledModules: _parseModules(await _getSetting('enabled_modules')),
+      calendarStartDay: await _getSetting('calendar_start_day'),
+      showHighFertility:
+          (await _getSetting('show_high_fertility') ?? 'false') == 'true',
     );
   }
 
   static Future<void> saveSettings(AppSettings s) async {
-    await _saveSetting('user_mode', s.userMode);
+    await _saveSetting('menstruation_tracking', s.menstruationTracking.toString());
     await _saveSetting('notification_hour', s.notificationHour.toString());
     await _saveSetting('notification_minute', s.notificationMinute.toString());
     await _saveSetting(
         'notifications_enabled', s.notificationsEnabled.toString());
     await _saveSetting('onboarding_complete', s.onboardingComplete.toString());
     await _saveSetting('enabled_modules', jsonEncode(s.enabledModules.toList()));
+    await _saveSetting('show_high_fertility', s.showHighFertility.toString());
+    if (s.calendarStartDay != null) {
+      await _saveSetting('calendar_start_day', s.calendarStartDay!);
+    } else {
+      await _deleteSetting('calendar_start_day');
+    }
     if (s.lastPeriodStart != null) {
       await _saveSetting('last_period_start', s.lastPeriodStart!);
     } else {

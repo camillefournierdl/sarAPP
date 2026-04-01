@@ -4,15 +4,15 @@ class AppModule {
   final String label;
   final String description;
   final String emoji;
-  /// If true, the module is only offered to female-mode users.
-  final bool femaleOnly;
+  /// If true, the module is only shown when menstruation tracking is enabled.
+  final bool menstruationOnly;
 
   const AppModule({
     required this.key,
     required this.label,
     required this.description,
     required this.emoji,
-    this.femaleOnly = false,
+    this.menstruationOnly = false,
   });
 
   // ── Registry — add new modules here ──────────────────────────────────────
@@ -35,6 +35,18 @@ class AppModule {
     description: 'Sleep quality scale (0 – 10)',
     emoji: '🔋',
   );
+  static const weather = AppModule(
+    key: 'weather',
+    label: 'Weather',
+    description: 'Weather rating scale (0 – 10)',
+    emoji: '🌤️',
+  );
+  static const work = AppModule(
+    key: 'work',
+    label: 'Work',
+    description: 'Work day type (off / half / full)',
+    emoji: '💼',
+  );
   static const activity = AppModule(
     key: 'activity',
     label: 'Physical activity',
@@ -52,7 +64,7 @@ class AppModule {
     label: 'Symptoms',
     description: 'Physical symptom tracking',
     emoji: '🩺',
-    femaleOnly: true,
+    menstruationOnly: true,
   );
   static const notes = AppModule(
     key: 'notes',
@@ -66,6 +78,8 @@ class AppModule {
     happiness,
     emotions,
     sleep,
+    weather,
+    work,
     activity,
     food,
     symptoms,
@@ -77,6 +91,8 @@ class AppModule {
     'happiness',
     'emotions',
     'sleep',
+    'weather',
+    'work',
     'activity',
     'food',
     'notes',

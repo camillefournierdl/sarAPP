@@ -1,17 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/settings_provider.dart';
-import 'home_screen.dart';
 
 class OnboardingScreen extends StatelessWidget {
   const OnboardingScreen({super.key});
 
-  Future<void> _select(BuildContext context, String mode) async {
-    await context.read<SettingsProvider>().setOnboardingComplete(mode);
-    if (!context.mounted) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
-    );
+  Future<void> _select(BuildContext context, {required bool menstruationTracking}) async {
+    // SarApp watches settings and swaps home to HomeScreen automatically —
+    // no manual navigation needed here.
+    await context.read<SettingsProvider>().setOnboardingComplete(menstruationTracking: menstruationTracking);
   }
 
   @override
@@ -39,25 +36,25 @@ class OnboardingScreen extends StatelessWidget {
               ),
               const SizedBox(height: 64),
               Text(
-                'What would you like to track?',
+                'Do you want to track your menstrual cycle?',
                 style: theme.textTheme.titleMedium,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
               _ModeCard(
                 icon: Icons.favorite,
-                title: 'Full tracking',
-                subtitle: 'Mood + menstrual cycle phases & symptoms',
+                title: 'Yes — track menstruation',
+                subtitle: 'Mood + cycle phases, period dates & symptoms',
                 color: const Color(0xFFE53935),
-                onTap: () => _select(context, 'female'),
+                onTap: () => _select(context, menstruationTracking: true),
               ),
               const SizedBox(height: 16),
               _ModeCard(
                 icon: Icons.mood,
-                title: 'Mood only',
-                subtitle: 'Emotion tags and daily notes',
+                title: 'No — mood only',
+                subtitle: 'Happiness, emotions, sleep, food & activity',
                 color: const Color(0xFF7C4DFF),
-                onTap: () => _select(context, 'male'),
+                onTap: () => _select(context, menstruationTracking: false),
               ),
               const SizedBox(height: 32),
               Text(

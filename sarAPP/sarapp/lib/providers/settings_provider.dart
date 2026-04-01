@@ -19,9 +19,9 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setOnboardingComplete(String userMode) async {
+  Future<void> setOnboardingComplete({bool menstruationTracking = true}) async {
     await update(_settings.copyWith(
-      userMode: userMode,
+      menstruationTracking: menstruationTracking,
       onboardingComplete: true,
     ));
   }
@@ -34,13 +34,15 @@ class SettingsProvider extends ChangeNotifier {
   /// Uses explicit reconstruction because copyWith can't set a field to null.
   Future<void> clearPeriodBaseline() async {
     _settings = AppSettings(
-      userMode: _settings.userMode,
+      menstruationTracking: _settings.menstruationTracking,
       notificationHour: _settings.notificationHour,
       notificationMinute: _settings.notificationMinute,
       notificationsEnabled: _settings.notificationsEnabled,
       onboardingComplete: _settings.onboardingComplete,
       lastPeriodStart: null,
       enabledModules: _settings.enabledModules,
+      calendarStartDay: _settings.calendarStartDay,
+      showHighFertility: _settings.showHighFertility,
     );
     await DatabaseService.saveSettings(_settings);
     notifyListeners();

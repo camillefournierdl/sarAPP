@@ -29,6 +29,8 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
   // null = user hasn't rated; becomes 0–10 once the slider is touched
   int? _happinessScore;
   int? _sleepScore;
+  int? _weatherScore;
+  String? _workDay;
   late List<String> _foods;
   late List<String> _activities;
   late TextEditingController _notesController;
@@ -46,6 +48,8 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
     _symptoms = List.from(e?.symptoms ?? []);
     _happinessScore = e?.happinessScore;
     _sleepScore = e?.sleepScore;
+    _weatherScore = e?.weatherScore;
+    _workDay = e?.workDay;
     _foods = List.from(e?.foods ?? []);
     _activities = List.from(e?.activities ?? []);
     _notesController = TextEditingController(text: e?.notes ?? '');
@@ -73,6 +77,8 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
       symptoms: _symptoms,
       happinessScore: _happinessScore,
       sleepScore: _sleepScore,
+      weatherScore: _weatherScore,
+      workDay: _workDay,
       foods: _foods,
       activities: _activities,
       notes: _notesController.text.trim(),
@@ -85,7 +91,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>().settings;
-    final isFemale = settings.isFemaleMode;
+    final isFemale = settings.isMenstruationTracking;
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -161,6 +167,18 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
                     ),
                     const SizedBox(height: 16),
                   ],
+                  if (settings.isModuleEnabled('weather')) ...[
+                    _Section(
+                      title: 'How was the weather today? (0 – 10)',
+                      child: _HappinessSlider(
+                        value: _weatherScore,
+                        onChanged: (v) => setState(() => _weatherScore = v),
+                        labelLow: '🌧️',
+                        labelHigh: '☀️',
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   const SizedBox(height: 16),
                   Center(
                     child: FilledButton.icon(
@@ -171,6 +189,16 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
                   ),
                 ] else ...[
                   // ── Step 2: Lifestyle ─────────────────────────────────
+                  if (settings.isModuleEnabled('work')) ...[
+                    _Section(
+                      title: 'How was your work day?',
+                      child: _WorkDaySelector(
+                        value: _workDay,
+                        onChanged: (v) => setState(() => _workDay = v),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   if (settings.isModuleEnabled('activity')) ...[
                     _Section(
                       title: 'Physical activity today?',
@@ -352,6 +380,29 @@ class _ChipSelector extends StatelessWidget {
           },
         );
       }).toList(),
+    );
+  }
+}
+
+// ── Work day selector ─────────────────────────────────────────────────────────
+
+class _WorkDaySelector extends StatelessWidget {
+  final String? value;
+  final ValueChanged<String?> onChanged;
+
+  const _WorkDaySelector({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return SegmentedButton<String>(
+      segments: const [
+        ButtonSegment(value: 'off',  label: Text('Day off'),  icon: Text('🌿')),
+        ButtonSegment(value: 'half', label: Text('Half day'), icon: Text('🌗')),
+        ButtonSegment(value: 'full', label: Text('Full day'), icon: Text('💼')),
+      ],
+      selected: value != null ? {value!} : {},
+      emptySelectionAllowed: true,
+      onSelectionChanged: (sel) => onChanged(sel.isEmpty ? null : sel.first),
     );
   }
 }

@@ -30,7 +30,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   Widget build(BuildContext context) {
     final isFemale =
-        context.watch<SettingsProvider>().settings.isFemaleMode;
+        context.watch<SettingsProvider>().settings.isMenstruationTracking;
 
     final todayButton = IconButton(
       icon: const Icon(Icons.today),
@@ -126,55 +126,40 @@ class _CycleCalendarTab extends StatefulWidget {
 
 class _CycleCalendarTabState extends State<_CycleCalendarTab> {
   DateTime? _selectedDay;
-  Map<DateTime, String> _phases = {};
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _refreshPhases();
-  }
-
-  @override
-  void didUpdateWidget(_CycleCalendarTab old) {
-    super.didUpdateWidget(old);
-    if (old.focusedDay.year != widget.focusedDay.year ||
-        old.focusedDay.month != widget.focusedDay.month) {
-      _refreshPhases();
-    }
-  }
-
-  void _refreshPhases() {
-    final lastPeriodStart =
-        context.read<SettingsProvider>().settings.lastPeriodStart;
-    final entries = context.read<EntriesProvider>().entries;
-    // Can show phases if either a baseline is set OR entries contain period starts
-    final hasPeriodData =
-        lastPeriodStart != null || entries.any((e) => e.periodStart);
-    if (!hasPeriodData) {
-      setState(() => _phases = {});
-      return;
-    }
-    final rangeStart =
-        DateTime(widget.focusedDay.year, widget.focusedDay.month - 2, 1);
-    final rangeEnd =
-        DateTime(widget.focusedDay.year, widget.focusedDay.month + 3, 0);
-    setState(() {
-      _phases = CycleService.buildPhaseMap(
-        baselinePeriodStart: lastPeriodStart,
-        entries: entries,
-        rangeStart: rangeStart,
-        rangeEnd: rangeEnd,
-      );
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
     final entries = context.watch<EntriesProvider>().entries;
+    final settings = context.watch<SettingsProvider>().settings;
     final hasPeriodEntries = entries.any((e) => e.periodStart);
 
-    return Column(
-      children: [
+    // Compute phases here so any change to entries, settings, or focusedDay
+    // automatically produces the correct map without manual refresh calls.
+    final rangeStart =
+        DateTime(widget.focusedDay.year, widget.focusedDay.month - 2, 1);
+    final rangeEnd =
+        DateTime(widget.focusedDay.year, widget.focusedDay.month + 3, 0);
+    final phases =
+        (settings.lastPeriodStart != null || hasPeriodEntries)
+            ? CycleService.buildPhaseMap(
+                baselinePeriodStart: settings.lastPeriodStart,
+                entries: entries,
+                rangeStart: rangeStart,
+                rangeEnd: rangeEnd,
+                showHighFertility: settings.showHighFertility,
+              )
+            : <DateTime, String>{};
+
+    // Content-based key so TableCalendar fully recreates when phases change.
+    // Without this, TableCalendar (a StatefulWidget) may not re-render its
+    // day cells when only the builder callbacks are updated.
+    final phasesKey = ValueKey(Object.hashAll(
+      phases.entries.map((e) => Object.hash(e.key, e.value)),
+    ));
+
+    return SingleChildScrollView(
+      child: Column(
+        children: [
         // Instruction when no period data logged yet
         if (!hasPeriodEntries)
           _InstructionBanner(
@@ -183,21 +168,19 @@ class _CycleCalendarTabState extends State<_CycleCalendarTab> {
           ),
 
         _SharedCalendar(
+          key: phasesKey,
           focusedDay: widget.focusedDay,
           selectedDay: _selectedDay,
           onDaySelected: (selected, focused) {
             setState(() => _selectedDay = selected);
             widget.onFocusedDayChanged(focused);
           },
-          onPageChanged: (focused) {
-            widget.onFocusedDayChanged(focused);
-            _refreshPhases();
-          },
+          onPageChanged: widget.onFocusedDayChanged,
           entries: entries,
           dayColorBuilder: (day) {
-            final phase = _phases[_dateOnly(day)];
+            final phase = phases[_dateOnly(day)];
             return phase != null
-                ? cyclePhaseColor(phase)?.withAlpha(95)
+                ? cyclePhaseColor(phase).withAlpha(95)
                 : null;
           },
         ),
@@ -233,20 +216,21 @@ class _CycleCalendarTabState extends State<_CycleCalendarTab> {
                 notes: existing?.notes ?? '',
               );
               await context.read<EntriesProvider>().saveEntry(updated);
-              _refreshPhases();
             },
           ),
         ],
 
-        // Phase legend — show once we have any phase data to display
-        if (_phases.isNotEmpty) ...[
+        // Phase legend — shown only when there is phase data
+        if (phases.isNotEmpty) ...[
           const Divider(height: 1),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: _PhaseLegend(),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: _PhaseLegend(
+                showHighFertility: settings.showHighFertility),
           ),
         ],
       ],
+      ),
     );
   }
 }
@@ -309,34 +293,36 @@ class _MoodCalendarTabState extends State<_MoodCalendarTab> {
   Widget build(BuildContext context) {
     final entries = context.watch<EntriesProvider>().entries;
 
-    return Column(
-      children: [
-        _SharedCalendar(
-          focusedDay: widget.focusedDay,
-          selectedDay: _selectedDay,
-          onDaySelected: (selected, focused) {
-            setState(() => _selectedDay = selected);
-            widget.onFocusedDayChanged(focused);
-            if (!selected.isAfter(DateTime.now())) {
-              _openEntry(context, DateFormat('yyyy-MM-dd').format(selected));
-            }
-          },
-          onPageChanged: (focused) => widget.onFocusedDayChanged(focused),
-          entries: entries,
-          dayColorBuilder: (day) => _colorForDay(day, entries),
-        ),
-
-        // Interactive legend
-        const Divider(height: 1),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: _InteractiveMoodLegend(
-            selectedEmotion: _filterEmotion,
-            onSelected: (value) =>
-                setState(() => _filterEmotion = value),
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          _SharedCalendar(
+            focusedDay: widget.focusedDay,
+            selectedDay: _selectedDay,
+            onDaySelected: (selected, focused) {
+              setState(() => _selectedDay = selected);
+              widget.onFocusedDayChanged(focused);
+              if (!selected.isAfter(DateTime.now())) {
+                _openEntry(context, DateFormat('yyyy-MM-dd').format(selected));
+              }
+            },
+            onPageChanged: (focused) => widget.onFocusedDayChanged(focused),
+            entries: entries,
+            dayColorBuilder: (day) => _colorForDay(day, entries),
           ),
-        ),
-      ],
+
+          // Interactive legend
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: _InteractiveMoodLegend(
+              selectedEmotion: _filterEmotion,
+              onSelected: (value) =>
+                  setState(() => _filterEmotion = value),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -353,6 +339,7 @@ class _SharedCalendar extends StatelessWidget {
   final Color? Function(DateTime day) dayColorBuilder;
 
   const _SharedCalendar({
+    super.key,
     required this.focusedDay,
     required this.selectedDay,
     required this.onDaySelected,
@@ -367,6 +354,7 @@ class _SharedCalendar extends StatelessWidget {
       firstDay: DateTime.utc(2020, 1, 1),
       lastDay: DateTime.utc(2030, 12, 31),
       focusedDay: focusedDay,
+      startingDayOfWeek: _resolveStartDay(context),
       calendarFormat: CalendarFormat.month,
       availableCalendarFormats: const {CalendarFormat.month: 'Month'},
       selectedDayPredicate: (day) => isSameDay(selectedDay, day),
@@ -407,6 +395,26 @@ class _SharedCalendar extends StatelessWidget {
   }
 }
 
+// ── Week start helpers ────────────────────────────────────────────────────────
+
+StartingDayOfWeek _resolveStartDay(BuildContext context) {
+  final pref = context.read<SettingsProvider>().settings.calendarStartDay;
+  if (pref == 'monday') return StartingDayOfWeek.monday;
+  if (pref == 'sunday') return StartingDayOfWeek.sunday;
+  return _localeStartDay(context);
+}
+
+StartingDayOfWeek _localeStartDay(BuildContext context) {
+  const sundayCountries = {
+    'US', 'CA', 'MX', 'BR', 'JP', 'CN', 'TW', 'HK', 'KR',
+    'SA', 'AE', 'IL', 'ZA', 'PH', 'VE', 'CO', 'AR',
+  };
+  final country = Localizations.localeOf(context).countryCode?.toUpperCase() ?? '';
+  return sundayCountries.contains(country)
+      ? StartingDayOfWeek.sunday
+      : StartingDayOfWeek.monday;
+}
+
 // ── Day cell ───────────────────────────────────────────────────────────────────
 
 class _DayCell extends StatelessWidget {
@@ -429,8 +437,9 @@ class _DayCell extends StatelessWidget {
     BoxDecoration decoration;
     if (isSelected) {
       decoration = BoxDecoration(
-        color: color ?? primary,
+        color: color ?? primary.withAlpha(60),
         shape: BoxShape.circle,
+        border: Border.all(color: Colors.black, width: 2.5),
       );
     } else if (isToday) {
       decoration = BoxDecoration(
@@ -454,9 +463,9 @@ class _DayCell extends StatelessWidget {
         child: Text(
           '${day.day}',
           style: TextStyle(
-            fontSize: 13,
+            fontSize: isSelected ? 14 : 13,
             color: isSelected
-                ? Colors.white
+                ? Colors.black
                 : color != null
                     ? (color!.computeLuminance() < 0.35
                         ? Colors.white
@@ -473,15 +482,19 @@ class _DayCell extends StatelessWidget {
 // ── Legends ────────────────────────────────────────────────────────────────────
 
 class _PhaseLegend extends StatelessWidget {
-  const _PhaseLegend();
+  final bool showHighFertility;
+  const _PhaseLegend({required this.showHighFertility});
 
   @override
   Widget build(BuildContext context) {
-    const phases = [
-      ('Menstruation', 'menstruation'),
-      ('Follicular', 'follicular'),
-      ('Ovulation', 'ovulation'),
-      ('Luteal', 'luteal'),
+    final phases = [
+      ('Menstruation',     'menstruation'),
+      ('Follicular',       'follicular'),
+      if (showHighFertility)
+        ('Higher fertility', 'high_fertility')
+      else
+        ('Ovulation',      'ovulation'),
+      ('Luteal',           'luteal'),
     ];
     return Wrap(
       spacing: 12,

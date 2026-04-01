@@ -13,7 +13,7 @@ class ChartsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final entries = context.watch<EntriesProvider>().entries;
     final isFemale =
-        context.watch<SettingsProvider>().settings.isFemaleMode;
+        context.watch<SettingsProvider>().settings.isMenstruationTracking;
 
     if (entries.isEmpty) {
       return const Center(child: Text('Log some entries to see charts.'));

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/app_settings.dart';
 import '../models/entry.dart';
 import '../models/app_module.dart';
 import '../providers/entries_provider.dart';
@@ -27,18 +28,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await ExportService.exportToCsv(entries);
   }
 
-  Future<void> _switchMode() async {
+  String _startDayLabel(String? pref) {
+    if (pref == 'monday') return 'Monday';
+    if (pref == 'sunday') return 'Sunday';
+    return 'Device default';
+  }
+
+  Future<void> _pickStartDay(AppSettings settings) async {
+    final picked = await showDialog<String?>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Week starts on'),
+        children: [
+          _StartDayOption(ctx, label: 'Device default', value: null,    current: settings.calendarStartDay),
+          _StartDayOption(ctx, label: 'Monday',         value: 'monday', current: settings.calendarStartDay),
+          _StartDayOption(ctx, label: 'Sunday',         value: 'sunday', current: settings.calendarStartDay),
+        ],
+      ),
+    );
+    if (!mounted || picked == settings.calendarStartDay) return;
+    // ignore: use_build_context_synchronously
+    await context.read<SettingsProvider>().update(
+          settings.copyWith(calendarStartDay: picked),
+        );
+  }
+
+  Future<void> _toggleMenstruationTracking(bool enabled) async {
     final settings = context.read<SettingsProvider>().settings;
-    final newMode = settings.isFemaleMode ? 'male' : 'female';
     await context
         .read<SettingsProvider>()
-        .update(settings.copyWith(userMode: newMode));
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-          content: Text(
-              'Switched to ${newMode == "female" ? "Full tracking" : "Mood only"} mode.')),
-    );
+        .update(settings.copyWith(menstruationTracking: enabled));
   }
 
   Future<void> _setReminder(bool enabled, {TimeOfDay? time}) async {
@@ -111,38 +130,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return ListView(
       children: [
         // ── Cycle stats (female only) ─────────────────────────────────────
-        if (settings.isFemaleMode) ...[
+        if (settings.isMenstruationTracking) ...[
           const _Header('Cycle'),
-          _CycleStatsCard(
-              entries: context
-                  .watch<EntriesProvider>()
-                  .entries),
+          _CycleStatsCard(entries: context.watch<EntriesProvider>().entries),
+          SwitchListTile(
+            secondary: const Icon(Icons.child_friendly_outlined),
+            title: const Text('Show higher-fertility window'),
+            subtitle: const Text(
+                'Highlights the ~5 days of elevated fertility around ovulation'),
+            value: settings.showHighFertility,
+            onChanged: (v) => context
+                .read<SettingsProvider>()
+                .update(settings.copyWith(showHighFertility: v)),
+          ),
         ],
 
         // ── Questionnaire modules ─────────────────────────────────────────
         const _Header('Questionnaire modules'),
-        ...AppModule.all
-            .where((m) => !m.femaleOnly || settings.isFemaleMode)
-            .map((m) => SwitchListTile(
-                  secondary: Text(m.emoji,
-                      style: const TextStyle(fontSize: 20)),
-                  title: Text(m.label),
-                  subtitle: Text(m.description),
-                  value: settings.isModuleEnabled(m.key),
-                  onChanged: (_) => context
-                      .read<SettingsProvider>()
-                      .update(settings.withModuleToggled(m.key)),
-                )),
-
-        // ── Tracking mode ─────────────────────────────────────────────────
-        const _Header('Tracking'),
         ListTile(
-          leading: const Icon(Icons.swap_horiz),
-          title: Text(settings.isFemaleMode
-              ? 'Mode: Full tracking (mood + cycle)'
-              : 'Mode: Mood only'),
-          subtitle: const Text('Tap to switch'),
-          onTap: _switchMode,
+          leading: const Icon(Icons.tune),
+          title: const Text('Questionnaire modules'),
+          subtitle: Text(
+            '${settings.enabledModules.length} active',
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const ModulesScreen()),
+          ),
+        ),
+
+        // ── Tracking ──────────────────────────────────────────────────────
+        const _Header('Tracking'),
+        SwitchListTile(
+          secondary: const Icon(Icons.favorite_outline),
+          title: const Text('Menstruation tracking'),
+          subtitle: const Text('Enable cycle phases, period dates & symptoms'),
+          value: settings.isMenstruationTracking,
+          onChanged: _toggleMenstruationTracking,
+        ),
+        ListTile(
+          leading: const Icon(Icons.calendar_today),
+          title: const Text('Week starts on'),
+          subtitle: Text(_startDayLabel(settings.calendarStartDay)),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => _pickStartDay(settings),
         ),
 
         // ── Reminder ──────────────────────────────────────────────────────
@@ -347,6 +378,28 @@ class _PhaseRow extends StatelessWidget {
   }
 }
 
+// ── Start-day dialog option ───────────────────────────────────────────────────
+
+Widget _StartDayOption(
+  BuildContext ctx, {
+  required String label,
+  required String? value,
+  required String? current,
+}) =>
+    SimpleDialogOption(
+      onPressed: () => Navigator.pop(ctx, value),
+      child: Row(
+        children: [
+          Icon(
+            current == value ? Icons.radio_button_checked : Icons.radio_button_off,
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          Text(label),
+        ],
+      ),
+    );
+
 class _Header extends StatelessWidget {
   final String text;
   const _Header(this.text);
@@ -361,6 +414,36 @@ class _Header extends StatelessWidget {
               color: Theme.of(context).colorScheme.primary,
               letterSpacing: 1.2,
             ),
+      ),
+    );
+  }
+}
+
+// ── Modules sub-screen ────────────────────────────────────────────────────────
+
+class ModulesScreen extends StatelessWidget {
+  const ModulesScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = context.watch<SettingsProvider>().settings;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Questionnaire modules')),
+      body: ListView(
+        children: AppModule.all
+            .where((m) => !m.menstruationOnly || settings.isMenstruationTracking)
+            .map((m) => SwitchListTile(
+                  secondary: Text(m.emoji,
+                      style: const TextStyle(fontSize: 20)),
+                  title: Text(m.label),
+                  subtitle: Text(m.description),
+                  value: settings.isModuleEnabled(m.key),
+                  onChanged: (_) => context
+                      .read<SettingsProvider>()
+                      .update(settings.withModuleToggled(m.key)),
+                ))
+            .toList(),
       ),
     );
   }

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
 const cyclePhases = [
-  _Phase('menstruation', 'Menstruation', Color(0xFFE53935)),
-  _Phase('follicular', 'Follicular', Color(0xFF43A047)),
-  _Phase('ovulation', 'Ovulation', Color(0xFFFDD835)),
-  _Phase('luteal', 'Luteal', Color(0xFF8E24AA)),
+  _Phase('menstruation',  'Menstruation',      Color(0xFFE53935)),
+  _Phase('follicular',    'Follicular',         Color(0xFF43A047)),
+  _Phase('high_fertility','Higher fertility',   Color(0xFFFFA726)), // orange
+  _Phase('ovulation',     'Ovulation',          Color(0xFFFDD835)),
+  _Phase('luteal',        'Luteal',             Color(0xFF8E24AA)),
 ];
 
 class _Phase {

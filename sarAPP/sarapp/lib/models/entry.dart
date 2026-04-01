@@ -10,6 +10,8 @@ class Entry {
   final List<String> symptoms;
   final int? happinessScore; // 0–10, null = not answered
   final int? sleepScore;     // 0–10, null = not answered
+  final int? weatherScore;   // 0–10, null = not answered
+  final String? workDay;     // 'off' | 'half' | 'full' | null = not answered
   final List<String> foods; // e.g. ['gluten', 'lactose']
   final List<String> activities; // e.g. ['weight_lifting', 'cardio']
   final String notes;
@@ -25,6 +27,8 @@ class Entry {
     this.symptoms = const [],
     this.happinessScore,
     this.sleepScore,
+    this.weatherScore,
+    this.workDay,
     this.foods = const [],
     this.activities = const [],
     this.notes = '',
@@ -40,6 +44,8 @@ class Entry {
     List<String> symptoms = const [],
     int? happinessScore,
     int? sleepScore,
+    int? weatherScore,
+    String? workDay,
     List<String> foods = const [],
     List<String> activities = const [],
     String notes = '',
@@ -53,6 +59,8 @@ class Entry {
         symptoms: symptoms,
         happinessScore: happinessScore,
         sleepScore: sleepScore,
+        weatherScore: weatherScore,
+        workDay: workDay,
         foods: foods,
         activities: activities,
         notes: notes,
@@ -69,6 +77,8 @@ class Entry {
         'symptoms': jsonEncode(symptoms),
         'happiness_score': happinessScore,
         'sleep_score': sleepScore,
+        'weather_score': weatherScore,
+        'work_day': workDay,
         'foods': jsonEncode(foods),
         'activities': jsonEncode(activities),
         'notes': notes,
@@ -87,6 +97,8 @@ class Entry {
             jsonDecode(map['symptoms'] as String? ?? '[]')),
         happinessScore: map['happiness_score'] as int?,
         sleepScore: map['sleep_score'] as int?,
+        weatherScore: map['weather_score'] as int?,
+        workDay: map['work_day'] as String?,
         foods: List<String>.from(
             jsonDecode(map['foods'] as String? ?? '[]')),
         activities: List<String>.from(
@@ -100,6 +112,8 @@ class Entry {
       emotions.isNotEmpty ||
       happinessScore != null ||
       sleepScore != null ||
+      weatherScore != null ||
+      workDay != null ||
       activities.isNotEmpty ||
       foods.isNotEmpty ||
       symptoms.isNotEmpty ||

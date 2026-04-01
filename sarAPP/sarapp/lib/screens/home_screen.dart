@@ -82,7 +82,7 @@ class _DashboardTab extends StatelessWidget {
     final entries = context.watch<EntriesProvider>().entries;
     final todayEntry = context.watch<EntriesProvider>().getByDate(today);
     final settings = context.watch<SettingsProvider>().settings;
-    final isFemale = settings.isFemaleMode;
+    final isFemale = settings.isMenstruationTracking;
     final theme = Theme.of(context);
 
     // Determine cycle baseline: prefer settings, fall back to most recent logged start
@@ -227,7 +227,9 @@ class _CycleInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final phase = CycleService.todayPhase(lastPeriodStart, entries: entries);
+    final settings = context.watch<SettingsProvider>().settings;
+    final phase = CycleService.todayPhase(lastPeriodStart,
+        entries: entries, showHighFertility: settings.showHighFertility);
     final day = CycleService.dayOfCycle(lastPeriodStart, entries: entries);
     final daysLeft =
         CycleService.daysUntilNextPeriod(lastPeriodStart, entries: entries);

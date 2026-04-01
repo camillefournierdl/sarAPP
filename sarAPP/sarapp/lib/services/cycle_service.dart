@@ -10,9 +10,10 @@ import '../models/entry.dart';
 ///
 /// Phase layout (1-based day of cycle, given cycleLength C and periodLength P):
 ///   Days 1..P              → menstruation
-///   Days P+1..C-14         → follicular
-///   Day  C-13              → ovulation
-///   Days C-12..C           → luteal  (always 13 days + ovulation day = 14 days total)
+///   Days P+1..C-15         → follicular        (variable)
+///   Days C-14..C-1  [opt]  → fertile window    (5 days ending on ovulation)
+///   Day  C-14              → ovulation         (or absorbed into fertile window)
+///   Days C-13..C           → luteal            (always 14 days)
 class CycleService {
   static const int _defaultCycleLength = 28;
   static const int _defaultPeriodLength = 5;
@@ -33,15 +34,19 @@ class CycleService {
         .toList()
       ..sort();
 
-    // --- cycle length: gaps between consecutive period starts ---
+    // --- cycle length: median gap between consecutive period starts ---
     int cycleLength = _defaultCycleLength;
     final int cyclesLogged = starts.length >= 2 ? starts.length - 1 : 0;
     if (cyclesLogged > 0) {
-      int totalGap = 0;
+      final gaps = <int>[];
       for (int i = 1; i < starts.length; i++) {
-        totalGap += starts[i].difference(starts[i - 1]).inDays;
+        gaps.add(starts[i].difference(starts[i - 1]).inDays);
       }
-      cycleLength = (totalGap / cyclesLogged).round();
+      gaps.sort();
+      cycleLength = gaps.length.isOdd
+          ? gaps[gaps.length ~/ 2]
+          : ((gaps[gaps.length ~/ 2 - 1] + gaps[gaps.length ~/ 2]) / 2)
+              .round();
     }
 
     // --- period length: start → nearest subsequent end ---
@@ -64,8 +69,11 @@ class CycleService {
     }
     final periodsLogged = durations.length;
     if (periodsLogged > 0) {
-      periodLength =
-          (durations.reduce((a, b) => a + b) / periodsLogged).round();
+      final sorted = [...durations]..sort();
+      periodLength = sorted.length.isOdd
+          ? sorted[sorted.length ~/ 2]
+          : ((sorted[sorted.length ~/ 2 - 1] + sorted[sorted.length ~/ 2]) / 2)
+              .round();
     }
 
     // Safety: luteal is always 14 days; cycleLength must be at least periodLength + 15
@@ -84,12 +92,23 @@ class CycleService {
   // ── Phase mapping ───────────────────────────────────────────────────────────
 
   /// Phase name for a 0-based day index within a cycle.
-  static String phaseForDayIndex(int index,
-      {int cycleLength = _defaultCycleLength,
-      int periodLength = _defaultPeriodLength}) {
-    // Ovulation is at index (cycleLength - 14), i.e. 14 days before end of cycle
-    final ovulationIndex = cycleLength - 14;
+  ///
+  /// [showHighFertility] replaces the single ovulation day with a 5-day
+  /// higher-fertility window (4 days pre-ovulation + ovulation day).
+  static String phaseForDayIndex(
+    int index, {
+    int cycleLength = _defaultCycleLength,
+    int periodLength = _defaultPeriodLength,
+    bool showHighFertility = false,
+  }) {
+    // Ovulation at index cycleLength-15 (0-based) = day cycleLength-14 (1-based).
+    // Luteal then spans indices cycleLength-14 .. cycleLength-1 = 14 days.
+    final ovulationIndex = cycleLength - 15;
+    final fertileStart = ovulationIndex - 4; // 5-day window ending on ovulation
     if (index < periodLength) return 'menstruation';
+    if (showHighFertility && index >= fertileStart && index <= ovulationIndex) {
+      return 'high_fertility';
+    }
     if (index < ovulationIndex) return 'follicular';
     if (index == ovulationIndex) return 'ovulation';
     return 'luteal';
@@ -104,6 +123,7 @@ class CycleService {
     required DateTime rangeEnd,
     required int cycleLength,
     required int periodLength,
+    bool showHighFertility = false,
   }) {
     final result = <DateTime, String>{};
     final rs = _dateOnly(rangeStart);
@@ -118,7 +138,9 @@ class CycleService {
         final date = _dateOnly(cycleStart.add(Duration(days: i)));
         if (!date.isBefore(rs) && !date.isAfter(re)) {
           result[date] = phaseForDayIndex(i,
-              cycleLength: cycleLength, periodLength: periodLength);
+              cycleLength: cycleLength,
+              periodLength: periodLength,
+              showHighFertility: showHighFertility);
         }
       }
       cycleStart = cycleStart.add(Duration(days: cycleLength));
@@ -128,66 +150,96 @@ class CycleService {
 
   // ── Public API ──────────────────────────────────────────────────────────────
 
-  /// Builds the complete phase map for a date range by:
-  ///   1. Anchoring prediction to the most recent logged period start
-  ///      (falls back to [baselinePeriodStart] from settings).
-  ///   2. Using personal cycle/period lengths derived from [entries].
-  ///   3. Overwriting prediction with actual menstruation for every logged
-  ///      periodStart → periodEnd span.
+  /// Builds the complete phase map for a date range.
+  ///
+  /// Strategy:
+  ///   - Before the first ever logged period start → nothing shown (no backward
+  ///     extrapolation, so no phantom period starts in the past).
+  ///   - Between two consecutive logged period starts → phases predicted from
+  ///     the *earlier* start as anchor (each past cycle uses its own real start).
+  ///   - From the most recent logged period start onward → predicted forward,
+  ///     cycling around with modular day index for multi-cycle future display.
+  ///   - Falls back to [baselinePeriodStart] only when nothing has been logged.
+  ///   - Actual logged menstruation spans always overwrite predictions.
   static Map<DateTime, String> buildPhaseMap({
     required String? baselinePeriodStart,
     required List<Entry> entries,
     required DateTime rangeStart,
     required DateTime rangeEnd,
+    bool showHighFertility = false,
   }) {
     final stats = cycleStats(entries);
+    final phases = <DateTime, String>{};
+    final rs = _dateOnly(rangeStart);
+    final re = _dateOnly(rangeEnd);
+
     final loggedStarts = entries
         .where((e) => e.periodStart)
         .map((e) => _dateOnly(DateTime.parse(e.date)))
         .toList()
       ..sort();
 
-    // Best anchor = most recent logged period start, else settings baseline
-    final DateTime? anchor = loggedStarts.isNotEmpty
-        ? loggedStarts.last
-        : (baselinePeriodStart != null
-            ? _dateOnly(DateTime.parse(baselinePeriodStart))
-            : null);
-
-    if (anchor == null) return {};
-
-    // Step 1: predict
-    final phases = _predictFromAnchor(
-      anchor: anchor,
-      rangeStart: rangeStart,
-      rangeEnd: rangeEnd,
-      cycleLength: stats.cycleLength,
-      periodLength: stats.periodLength,
-    );
-
-    // Step 2: overwrite with actual logged menstruation spans
     final loggedEnds = entries
         .where((e) => e.periodEnd)
         .map((e) => _dateOnly(DateTime.parse(e.date)))
         .toList()
       ..sort();
 
-    final rs = _dateOnly(rangeStart);
-    final re = _dateOnly(rangeEnd);
+    if (loggedStarts.isEmpty) {
+      // No logged data at all — fall back to pure prediction from baseline.
+      final anchor = baselinePeriodStart != null
+          ? _dateOnly(DateTime.parse(baselinePeriodStart))
+          : null;
+      if (anchor == null) return {};
+      phases.addAll(_predictFromAnchor(
+        anchor: anchor,
+        rangeStart: rangeStart,
+        rangeEnd: rangeEnd,
+        cycleLength: stats.cycleLength,
+        periodLength: stats.periodLength,
+        showHighFertility: showHighFertility,
+      ));
+    } else {
+      // One segment per logged period start.
+      for (int i = 0; i < loggedStarts.length; i++) {
+        final segAnchor = loggedStarts[i];
+        // Segment ends the day before the next logged start, or at rangeEnd
+        // for the most recent start (which predicts forward).
+        final segEnd = i < loggedStarts.length - 1
+            ? _dateOnly(loggedStarts[i + 1].subtract(const Duration(days: 1)))
+            : re;
 
+        for (int d = 0; ; d++) {
+          final date = _dateOnly(segAnchor.add(Duration(days: d)));
+          if (date.isAfter(segEnd)) break;
+          if (!date.isBefore(rs) && !date.isAfter(re)) {
+            // Wrap day index only for the last (future-predicting) segment so
+            // multiple upcoming cycles get correct phase labels.
+            final index =
+                i < loggedStarts.length - 1 ? d : d % stats.cycleLength;
+            phases[date] = phaseForDayIndex(index,
+                cycleLength: stats.cycleLength,
+                periodLength: stats.periodLength,
+                showHighFertility: showHighFertility);
+          }
+        }
+      }
+    }
+
+    // Overwrite with actual logged menstruation spans.
     for (final start in loggedStarts) {
       final end = loggedEnds.cast<DateTime?>().firstWhere(
             (e) => !e!.isBefore(start),
             orElse: () => null,
           ) ??
-          start.add(Duration(days: stats.periodLength - 1));
+          _dateOnly(start.add(Duration(days: stats.periodLength - 1)));
 
-      var day = start;
+      var day = _dateOnly(start);
       while (!day.isAfter(end)) {
         if (!day.isBefore(rs) && !day.isAfter(re)) {
           phases[day] = 'menstruation';
         }
-        day = day.add(const Duration(days: 1));
+        day = _dateOnly(day.add(const Duration(days: 1)));
       }
     }
 
@@ -196,13 +248,14 @@ class CycleService {
 
   /// The predicted phase for today.
   static String? todayPhase(String? baselinePeriodStart,
-      {List<Entry>? entries}) {
+      {List<Entry>? entries, bool showHighFertility = false}) {
     final today = _dateOnly(DateTime.now());
     final map = buildPhaseMap(
       baselinePeriodStart: baselinePeriodStart,
       entries: entries ?? [],
       rangeStart: today,
       rangeEnd: today,
+      showHighFertility: showHighFertility,
     );
     return map[today];
   }
