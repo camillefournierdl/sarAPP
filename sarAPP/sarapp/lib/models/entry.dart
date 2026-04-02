@@ -14,6 +14,8 @@ class Entry {
   final String? workDay;     // 'off' | 'half' | 'full' | null = not answered
   final List<String> foods; // e.g. ['gluten', 'lactose']
   final List<String> activities; // e.g. ['weight_lifting', 'cardio']
+  final String? healthStatus;   // 'healthy' | 'sick' | null = not answered
+  final List<String> sickTags;  // e.g. ['cold', 'nausea']
   final String notes;
   final String createdAt;
 
@@ -31,6 +33,8 @@ class Entry {
     this.workDay,
     this.foods = const [],
     this.activities = const [],
+    this.healthStatus,
+    this.sickTags = const [],
     this.notes = '',
     required this.createdAt,
   });
@@ -48,6 +52,8 @@ class Entry {
     String? workDay,
     List<String> foods = const [],
     List<String> activities = const [],
+    String? healthStatus,
+    List<String> sickTags = const [],
     String notes = '',
   }) =>
       Entry(
@@ -63,6 +69,8 @@ class Entry {
         workDay: workDay,
         foods: foods,
         activities: activities,
+        healthStatus: healthStatus,
+        sickTags: sickTags,
         notes: notes,
         createdAt: DateTime.now().toIso8601String(),
       );
@@ -81,6 +89,8 @@ class Entry {
         'work_day': workDay,
         'foods': jsonEncode(foods),
         'activities': jsonEncode(activities),
+        'health_status': healthStatus,
+        'sick_tags': jsonEncode(sickTags),
         'notes': notes,
         'created_at': createdAt,
       };
@@ -103,6 +113,9 @@ class Entry {
             jsonDecode(map['foods'] as String? ?? '[]')),
         activities: List<String>.from(
             jsonDecode(map['activities'] as String? ?? '[]')),
+        healthStatus: map['health_status'] as String?,
+        sickTags: List<String>.from(
+            jsonDecode(map['sick_tags'] as String? ?? '[]')),
         notes: map['notes'] as String? ?? '',
         createdAt: map['created_at'] as String,
       );
@@ -117,6 +130,7 @@ class Entry {
       activities.isNotEmpty ||
       foods.isNotEmpty ||
       symptoms.isNotEmpty ||
+      healthStatus != null ||
       notes.isNotEmpty ||
       periodStart ||
       periodEnd;

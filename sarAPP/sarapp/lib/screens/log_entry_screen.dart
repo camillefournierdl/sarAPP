@@ -6,6 +6,7 @@ import '../providers/entries_provider.dart';
 import '../providers/settings_provider.dart';
 import '../widgets/emotion_tag_selector.dart';
 import '../widgets/symptom_selector.dart';
+import '../models/app_settings.dart';
 
 class LogEntryScreen extends StatefulWidget {
   /// Pass an existing entry to edit, or null to create a new one.
@@ -33,6 +34,8 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
   String? _workDay;
   late List<String> _foods;
   late List<String> _activities;
+  String? _healthStatus;
+  late List<String> _sickTags;
   late TextEditingController _notesController;
   int _step = 0;
 
@@ -52,6 +55,8 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
     _workDay = e?.workDay;
     _foods = List.from(e?.foods ?? []);
     _activities = List.from(e?.activities ?? []);
+    _healthStatus = e?.healthStatus;
+    _sickTags = List.from(e?.sickTags ?? []);
     _notesController = TextEditingController(text: e?.notes ?? '');
   }
 
@@ -65,6 +70,27 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
     if (_date == today) return widget.existing == null ? 'Log today' : 'Edit today';
     return DateFormat('MMM d, yyyy').format(DateTime.parse(_date));
+  }
+
+  /// Returns the indices of logical pages (0=Mood, 1=Health, 2=Lifestyle)
+  /// that have at least one enabled module, in order.
+  List<int> _activePages(AppSettings settings) {
+    final pages = <int>[];
+    // Page 0 — Mood
+    if (['happiness', 'emotions', 'sleep', 'weather']
+        .any(settings.isModuleEnabled)) pages.add(0);
+    // Page 1 — Health
+    if (settings.isModuleEnabled('health')) pages.add(1);
+    // Page 2 — Lifestyle
+    if (settings.isModuleEnabled('work') ||
+        settings.isModuleEnabled('activity') ||
+        settings.isModuleEnabled('food') ||
+        settings.isModuleEnabled('notes') ||
+        (settings.isMenstruationTracking &&
+            settings.isModuleEnabled('symptoms'))) pages.add(2);
+    // Always show at least one page
+    if (pages.isEmpty) pages.add(0);
+    return pages;
   }
 
   Future<void> _save() async {
@@ -81,6 +107,8 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
       workDay: _workDay,
       foods: _foods,
       activities: _activities,
+      healthStatus: _healthStatus,
+      sickTags: _sickTags,
       notes: _notesController.text.trim(),
     );
     await context.read<EntriesProvider>().saveEntry(entry);
@@ -94,20 +122,23 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
     final isFemale = settings.isMenstruationTracking;
     final theme = Theme.of(context);
 
+    final activePages = _activePages(settings);
+    final isLastStep = _step == activePages.length - 1;
+    final currentPage = activePages[_step];
+
     return Scaffold(
       appBar: AppBar(
         title: Text(_appBarTitle()),
-        // On step 2, override back to return to step 1 instead of leaving
-        leading: _step == 1
+        leading: _step > 0
             ? IconButton(
                 icon: const Icon(Icons.arrow_back),
-                onPressed: () => setState(() => _step = 0),
+                onPressed: () => setState(() => _step--),
               )
             : null,
         actions: [
-          if (_step == 0)
+          if (!isLastStep)
             TextButton(
-              onPressed: () => setState(() => _step = 1),
+              onPressed: () => setState(() => _step++),
               child: const Text('Next'),
             )
           else
@@ -120,7 +151,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
       body: Column(
         children: [
           // ── Step indicator ────────────────────────────────────────────
-          _StepDots(current: _step, total: 2),
+          _StepDots(current: _step, total: activePages.length),
 
           Expanded(
             child: ListView(
@@ -133,8 +164,8 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                if (_step == 0) ...[
-                  // ── Step 1: Mood ──────────────────────────────────────
+                if (currentPage == 0) ...[
+                  // ── Page 0: Mood ──────────────────────────────────────
                   if (settings.isModuleEnabled('happiness')) ...[
                     _Section(
                       title: 'How happy did you feel today? (0 – 10)',
@@ -179,16 +210,39 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
                     ),
                     const SizedBox(height: 16),
                   ],
-                  const SizedBox(height: 16),
-                  Center(
-                    child: FilledButton.icon(
-                      onPressed: () => setState(() => _step = 1),
-                      icon: const Icon(Icons.arrow_forward),
-                      label: const Text('Continue'),
+                ] else if (currentPage == 1) ...[
+                  // ── Page 1: Health ────────────────────────────────────
+                  _Section(
+                    title: 'How did you feel physically today?',
+                    child: _HealthStatusSelector(
+                      value: _healthStatus,
+                      onChanged: (v) => setState(() {
+                        _healthStatus = v;
+                        if (v == 'healthy') _sickTags = [];
+                      }),
                     ),
                   ),
+                  if (_healthStatus == 'sick') ...[
+                    const SizedBox(height: 16),
+                    _Section(
+                      title: 'What was wrong? (optional)',
+                      child: _ChipSelector(
+                        options: const [
+                          '🤧 Cold',
+                          '🤒 Flu',
+                          '🤢 Nausea',
+                          '🤕 Headache',
+                          '🔥 Fever',
+                          '🫄 Digestive issues',
+                          '😮‍💨 Fatigue',
+                        ],
+                        selected: _sickTags,
+                        onChanged: (v) => setState(() => _sickTags = v),
+                      ),
+                    ),
+                  ],
                 ] else ...[
-                  // ── Step 2: Lifestyle ─────────────────────────────────
+                  // ── Page 2: Lifestyle ─────────────────────────────────
                   if (settings.isModuleEnabled('work')) ...[
                     _Section(
                       title: 'How was your work day?',
@@ -256,6 +310,15 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
                       ),
                     ),
                 ],
+                const SizedBox(height: 16),
+                if (!isLastStep)
+                  Center(
+                    child: FilledButton.icon(
+                      onPressed: () => setState(() => _step++),
+                      icon: const Icon(Icons.arrow_forward),
+                      label: const Text('Continue'),
+                    ),
+                  ),
                 const SizedBox(height: 32),
               ],
             ),
@@ -380,6 +443,28 @@ class _ChipSelector extends StatelessWidget {
           },
         );
       }).toList(),
+    );
+  }
+}
+
+// ── Health status selector ────────────────────────────────────────────────────
+
+class _HealthStatusSelector extends StatelessWidget {
+  final String? value;
+  final ValueChanged<String?> onChanged;
+
+  const _HealthStatusSelector({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return SegmentedButton<String>(
+      segments: const [
+        ButtonSegment(value: 'healthy', label: Text('Healthy'), icon: Text('💪')),
+        ButtonSegment(value: 'sick',    label: Text('Sick'),    icon: Text('🤒')),
+      ],
+      selected: value != null ? {value!} : {},
+      emptySelectionAllowed: true,
+      onSelectionChanged: (sel) => onChanged(sel.isEmpty ? null : sel.first),
     );
   }
 }

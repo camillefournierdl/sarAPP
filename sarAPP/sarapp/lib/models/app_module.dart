@@ -66,6 +66,12 @@ class AppModule {
     emoji: '🩺',
     menstruationOnly: true,
   );
+  static const health = AppModule(
+    key: 'health',
+    label: 'Health',
+    description: 'General health status (healthy / sick)',
+    emoji: '🤒',
+  );
   static const notes = AppModule(
     key: 'notes',
     label: 'Notes',
@@ -79,6 +85,7 @@ class AppModule {
     emotions,
     sleep,
     weather,
+    health,
     work,
     activity,
     food,
@@ -92,6 +99,7 @@ class AppModule {
     'emotions',
     'sleep',
     'weather',
+    'health',
     'work',
     'activity',
     'food',

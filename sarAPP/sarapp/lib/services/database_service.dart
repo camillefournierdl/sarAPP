@@ -34,6 +34,8 @@ class DatabaseService {
             work_day         TEXT,
             foods            TEXT    NOT NULL DEFAULT '[]',
             activities       TEXT    NOT NULL DEFAULT '[]',
+            health_status    TEXT,
+            sick_tags        TEXT    NOT NULL DEFAULT '[]',
             notes            TEXT    NOT NULL DEFAULT '',
             created_at       TEXT    NOT NULL
           )
@@ -70,8 +72,15 @@ class DatabaseService {
           await db.execute(
               'ALTER TABLE entries ADD COLUMN work_day TEXT');
         }
+        // v5 → v6: add health_status and sick_tags columns
+        if (oldVersion < 6) {
+          await db.execute(
+              'ALTER TABLE entries ADD COLUMN health_status TEXT');
+          await db.execute(
+              "ALTER TABLE entries ADD COLUMN sick_tags TEXT NOT NULL DEFAULT '[]'");
+        }
       },
-      version: 5,
+      version: 6,
     );
   }
 
