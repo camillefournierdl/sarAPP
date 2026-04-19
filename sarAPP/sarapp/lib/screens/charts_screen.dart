@@ -32,21 +32,20 @@ class ChartsScreen extends StatelessWidget {
       }
     }
 
-    final emotionBars = emotionCounts.entries.map((entry) {
-      final idx = emotions.indexWhere((e) => e.value == entry.key);
+    final emotionKeys = emotionCounts.keys.toList()..sort();
+    final emotionBars = emotionKeys.asMap().entries.map((e) {
       return BarChartGroupData(
-        x: idx,
+        x: e.key,
         barRods: [
           BarChartRodData(
-            toY: entry.value.toDouble(),
-            color: emotionColor(entry.key),
+            toY: emotionCounts[e.value]!.toDouble(),
+            color: emotionColor(e.value),
             width: 18,
             borderRadius: BorderRadius.circular(4),
           ),
         ],
       );
-    }).toList()
-      ..sort((a, b) => a.x.compareTo(b.x));
+    }).toList();
 
     // ── Cycle phase distribution ───────────────────────────────────────────
     Map<String, int> phaseCounts = {};
@@ -80,13 +79,13 @@ class ChartsScreen extends StatelessWidget {
                       showTitles: true,
                       getTitlesWidget: (value, _) {
                         final idx = value.toInt();
-                        if (idx < 0 || idx >= emotions.length) {
+                        if (idx < 0 || idx >= emotionKeys.length) {
                           return const SizedBox.shrink();
                         }
                         return Padding(
                           padding: const EdgeInsets.only(top: 4),
                           child: Text(
-                            emotions[idx].label.split(' ').last,
+                            emotionLabel(emotionKeys[idx]).split(' ').last,
                             style: const TextStyle(fontSize: 10),
                           ),
                         );

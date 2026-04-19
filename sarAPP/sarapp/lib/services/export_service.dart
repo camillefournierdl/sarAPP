@@ -2,10 +2,14 @@ import 'dart:io';
 import 'package:csv/csv.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import '../models/app_settings.dart';
+import '../models/custom_module.dart';
 import '../models/entry.dart';
 
 class ExportService {
-  static Future<void> exportToCsv(List<Entry> entries) async {
+  static Future<void> exportToCsv(List<Entry> entries, AppSettings settings) async {
+    final customModules = settings.customModules;
+
     final rows = <List<dynamic>>[
       // Header row
       [
@@ -20,8 +24,15 @@ class ExportService {
         'weather_score',
         'work_day',
         'foods',
-        'activities',
+        'sports',
+        'leisure',
         'notes',
+        'health_status',
+        'sick_tags',
+        'libido_score',
+        'had_sex',
+        'water_glasses',
+        ...customModules.map((m) => m.name),
       ],
       // Data rows
       ...entries.map(
@@ -37,8 +48,17 @@ class ExportService {
           e.weatherScore ?? '',
           e.workDay ?? '',
           e.foods.join(';'),
-          e.activities.join(';'),
+          e.sports.join(';'),
+          e.leisure.join(';'),
           e.notes,
+          e.healthStatus ?? '',
+          e.sickTags.join(';'),
+          e.libidoScore ?? '',
+          e.hadSex ?? '',
+          e.waterGlasses ?? '',
+          ...customModules.map(
+            (m) => _serializeCustomValue(e.customData[m.id], m.responseType),
+          ),
         ],
       ),
     ];
@@ -48,10 +68,28 @@ class ExportService {
     final file = File('${dir.path}/sarapp_export.csv');
     await file.writeAsString(csv);
 
-    // Opens the OS share sheet (email, Drive, Files, etc.)
     await Share.shareXFiles(
       [XFile(file.path)],
       subject: 'sarAPP Data Export',
     );
+  }
+
+  static String _serializeCustomValue(dynamic value, ResponseType type) {
+    if (value == null) return '';
+    switch (type) {
+      case ResponseType.scale:
+        return value.toString();
+      case ResponseType.multiSelect:
+        return (value as List).join(';');
+      case ResponseType.singleSelect:
+        return value as String;
+      case ResponseType.text:
+        return value as String;
+      case ResponseType.conditional:
+        final map = value as Map;
+        final primary = map['value'] as String? ?? '';
+        final followup = (map['followup'] as List?)?.join(';') ?? '';
+        return followup.isEmpty ? primary : '$primary;$followup';
+    }
   }
 }

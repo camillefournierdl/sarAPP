@@ -13,10 +13,15 @@ class Entry {
   final int? weatherScore;   // 0–10, null = not answered
   final String? workDay;     // 'off' | 'half' | 'full' | null = not answered
   final List<String> foods; // e.g. ['gluten', 'lactose']
-  final List<String> activities; // e.g. ['weight_lifting', 'cardio']
+  final List<String> sports; // e.g. ['🏋️ Weight lifting', '🏃 Intense cardio']
+  final List<String> leisure; // e.g. ['📖 Reading', '🎮 Gaming']
   final String? healthStatus;   // 'healthy' | 'sick' | null = not answered
   final List<String> sickTags;  // e.g. ['cold', 'nausea']
   final String notes;
+  final int? libidoScore;    // 0–10, null = not answered
+  final String? hadSex;      // 'yes' | 'no' | null = not answered
+  final int? waterGlasses;   // 0–10, null = not answered
+  final Map<String, dynamic> customData;
   final String createdAt;
 
   const Entry({
@@ -32,10 +37,15 @@ class Entry {
     this.weatherScore,
     this.workDay,
     this.foods = const [],
-    this.activities = const [],
+    this.sports = const [],
+    this.leisure = const [],
     this.healthStatus,
     this.sickTags = const [],
     this.notes = '',
+    this.libidoScore,
+    this.hadSex,
+    this.waterGlasses,
+    this.customData = const {},
     required this.createdAt,
   });
 
@@ -51,10 +61,15 @@ class Entry {
     int? weatherScore,
     String? workDay,
     List<String> foods = const [],
-    List<String> activities = const [],
+    List<String> sports = const [],
+    List<String> leisure = const [],
     String? healthStatus,
     List<String> sickTags = const [],
     String notes = '',
+    int? libidoScore,
+    String? hadSex,
+    int? waterGlasses,
+    Map<String, dynamic> customData = const {},
   }) =>
       Entry(
         date: date,
@@ -68,10 +83,15 @@ class Entry {
         weatherScore: weatherScore,
         workDay: workDay,
         foods: foods,
-        activities: activities,
+        sports: sports,
+        leisure: leisure,
         healthStatus: healthStatus,
         sickTags: sickTags,
         notes: notes,
+        libidoScore: libidoScore,
+        hadSex: hadSex,
+        waterGlasses: waterGlasses,
+        customData: customData,
         createdAt: DateTime.now().toIso8601String(),
       );
 
@@ -88,10 +108,15 @@ class Entry {
         'weather_score': weatherScore,
         'work_day': workDay,
         'foods': jsonEncode(foods),
-        'activities': jsonEncode(activities),
+        'sports': jsonEncode(sports),
+        'leisure': jsonEncode(leisure),
         'health_status': healthStatus,
         'sick_tags': jsonEncode(sickTags),
         'notes': notes,
+        'libido_score': libidoScore,
+        'had_sex': hadSex,
+        'water_glasses': waterGlasses,
+        'custom_data': jsonEncode(customData),
         'created_at': createdAt,
       };
 
@@ -111,12 +136,19 @@ class Entry {
         workDay: map['work_day'] as String?,
         foods: List<String>.from(
             jsonDecode(map['foods'] as String? ?? '[]')),
-        activities: List<String>.from(
-            jsonDecode(map['activities'] as String? ?? '[]')),
+        sports: List<String>.from(
+            jsonDecode(map['sports'] as String? ?? map['activities'] as String? ?? '[]')),
+        leisure: List<String>.from(
+            jsonDecode(map['leisure'] as String? ?? '[]')),
         healthStatus: map['health_status'] as String?,
         sickTags: List<String>.from(
             jsonDecode(map['sick_tags'] as String? ?? '[]')),
         notes: map['notes'] as String? ?? '',
+        libidoScore: map['libido_score'] as int?,
+        hadSex: map['had_sex'] as String?,
+        waterGlasses: map['water_glasses'] as int?,
+        customData: Map<String, dynamic>.from(
+            jsonDecode(map['custom_data'] as String? ?? '{}') as Map),
         createdAt: map['created_at'] as String,
       );
 
@@ -127,11 +159,16 @@ class Entry {
       sleepScore != null ||
       weatherScore != null ||
       workDay != null ||
-      activities.isNotEmpty ||
+      sports.isNotEmpty ||
+      leisure.isNotEmpty ||
       foods.isNotEmpty ||
       symptoms.isNotEmpty ||
       healthStatus != null ||
       notes.isNotEmpty ||
+      libidoScore != null ||
+      hadSex != null ||
+      waterGlasses != null ||
       periodStart ||
-      periodEnd;
+      periodEnd ||
+      customData.isNotEmpty;
 }

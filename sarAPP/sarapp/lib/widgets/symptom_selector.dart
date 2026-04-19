@@ -1,22 +1,13 @@
 import 'package:flutter/material.dart';
 
-const symptoms = [
-  'cramps',
-  'bloating',
-  'headache',
-  'fatigue',
-  'mood swings',
-  'breast tenderness',
-  'back pain',
-  'acne',
-];
-
 class SymptomSelector extends StatelessWidget {
+  final List<String> options;
   final List<String> selected;
   final ValueChanged<List<String>> onChanged;
 
   const SymptomSelector({
     super.key,
+    required this.options,
     required this.selected,
     required this.onChanged,
   });
@@ -26,7 +17,7 @@ class SymptomSelector extends StatelessWidget {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: symptoms.map((s) {
+      children: options.map((s) {
         final isSelected = selected.contains(s);
         return FilterChip(
           label: Text(s),

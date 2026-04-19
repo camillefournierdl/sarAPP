@@ -50,11 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('sarAPP'),
-        centerTitle: true,
-      ),
-      body: _tabs[_tab],
+      body: SafeArea(child: _tabs[_tab]),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),

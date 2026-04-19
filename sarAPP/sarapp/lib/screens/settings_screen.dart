@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/app_settings.dart';
+import '../models/custom_module.dart';
 import '../models/entry.dart';
 import '../models/app_module.dart';
 import '../providers/entries_provider.dart';
@@ -25,7 +26,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
       return;
     }
-    await ExportService.exportToCsv(entries);
+    final settings = context.read<SettingsProvider>().settings;
+    await ExportService.exportToCsv(entries, settings);
   }
 
   String _startDayLabel(String? pref) {
@@ -158,6 +160,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             MaterialPageRoute(builder: (_) => const ModulesScreen()),
           ),
         ),
+        ListTile(
+          leading: const Icon(Icons.edit_note),
+          title: const Text('Customize modules'),
+          subtitle: const Text('Edit question, options, or delete'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const CustomizeModulesScreen()),
+          ),
+        ),
 
         // ── Tracking ──────────────────────────────────────────────────────
         const _Header('Tracking'),
@@ -217,10 +228,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
         // ── About ─────────────────────────────────────────────────────────
         const _Header('About'),
-        const ListTile(
-          leading: Icon(Icons.info_outline),
-          title: Text('sarAPP v0.1'),
-          subtitle: Text('Mood & cycle tracker — data stays on your device'),
+        ListTile(
+          leading: const Icon(Icons.info_outline),
+          title: const Text('About sarAPP'),
+          subtitle: const Text('What this app is and how it works'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const AboutScreen()),
+          ),
         ),
       ],
     );
@@ -421,30 +436,791 @@ class _Header extends StatelessWidget {
 
 // ── Modules sub-screen ────────────────────────────────────────────────────────
 
+// ── Shared helper ─────────────────────────────────────────────────────────────
+
+AppModule? _builtinForKey(String key) {
+  final matches = AppModule.all.where((m) => m.key == key);
+  return matches.isEmpty ? null : matches.first;
+}
+
+// ── Modules sub-screen (reorderable) ─────────────────────────────────────────
+
 class ModulesScreen extends StatelessWidget {
   const ModulesScreen({super.key});
+
+  void _onReorder(
+      int oldIndex, int newIndex, List<String> visibleKeys, AppSettings settings,
+      BuildContext context) {
+    if (newIndex > oldIndex) newIndex--;
+    final newVisible = List<String>.from(visibleKeys);
+    final moved = newVisible.removeAt(oldIndex);
+    newVisible.insert(newIndex, moved);
+    // Reconstruct full order keeping hidden modules at their sorted positions
+    final fullOrder = List<String>.from(settings.moduleOrder);
+    final visibleIndices = visibleKeys
+        .map(fullOrder.indexOf)
+        .toList()
+      ..sort();
+    for (var i = 0; i < visibleIndices.length; i++) {
+      fullOrder[visibleIndices[i]] = newVisible[i];
+    }
+    context.read<SettingsProvider>().update(
+          settings.copyWith(moduleOrder: fullOrder));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = context.watch<SettingsProvider>().settings;
+
+    final visibleKeys = settings.moduleOrder.where((key) {
+      final builtin = _builtinForKey(key);
+      if (builtin != null) {
+        return !builtin.menstruationOnly || settings.isMenstruationTracking;
+      }
+      return settings.customModules.any((m) => m.id == key);
+    }).toList();
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Questionnaire modules')),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const ModuleEditScreen()),
+        ),
+        child: const Icon(Icons.add),
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Card(
+              color: Theme.of(context).colorScheme.secondaryContainer,
+              elevation: 0,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                child: Row(children: [
+                  Icon(Icons.drag_indicator_outlined,
+                      size: 16,
+                      color: Theme.of(context).colorScheme.onSecondaryContainer),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Drag to reorder. Tap ✏️ to customise.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSecondaryContainer,
+                          ),
+                    ),
+                  ),
+                ]),
+              ),
+            ),
+          ),
+          Expanded(
+            child: ReorderableListView.builder(
+              itemCount: visibleKeys.length,
+              onReorder: (oldIdx, newIdx) =>
+                  _onReorder(oldIdx, newIdx, visibleKeys, settings, context),
+              itemBuilder: (ctx, index) {
+                final key = visibleKeys[index];
+                final builtin = _builtinForKey(key);
+                final custom = builtin == null
+                    ? settings.customModules
+                        .where((m) => m.id == key)
+                        .cast<CustomModule?>()
+                        .firstWhere((_) => true, orElse: () => null)
+                    : null;
+
+                final emojiStr =
+                    builtin?.emoji ?? (custom?.emoji.isNotEmpty == true ? custom!.emoji : null);
+                final label = builtin?.label ?? custom?.name ?? key;
+                final subtitle = builtin != null
+                    ? (settings.customModuleQuestions[key] ?? builtin.description)
+                    : (custom?.question ?? '');
+
+                return ListTile(
+                  key: Key(key),
+                  leading: emojiStr != null
+                      ? Text(emojiStr, style: const TextStyle(fontSize: 20))
+                      : const Icon(Icons.tune),
+                  title: Text(label),
+                  subtitle: Text(subtitle,
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined, size: 20),
+                        tooltip: 'Edit module',
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => ModuleEditScreen(moduleKey: key),
+                          ),
+                        ),
+                      ),
+                      Switch(
+                        value: settings.isModuleEnabled(key),
+                        onChanged: (_) => context
+                            .read<SettingsProvider>()
+                            .update(settings.withModuleToggled(key)),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Customize modules screen ──────────────────────────────────────────────────
+
+class CustomizeModulesScreen extends StatelessWidget {
+  const CustomizeModulesScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>().settings;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Questionnaire modules')),
+      appBar: AppBar(title: const Text('Customize modules')),
       body: ListView(
-        children: AppModule.all
-            .where((m) => !m.menstruationOnly || settings.isMenstruationTracking)
-            .map((m) => SwitchListTile(
-                  secondary: Text(m.emoji,
-                      style: const TextStyle(fontSize: 20)),
-                  title: Text(m.label),
-                  subtitle: Text(m.description),
-                  value: settings.isModuleEnabled(m.key),
-                  onChanged: (_) => context
-                      .read<SettingsProvider>()
-                      .update(settings.withModuleToggled(m.key)),
-                ))
-            .toList(),
+        children: settings.moduleOrder.map((key) {
+          final builtin = _builtinForKey(key);
+          if (builtin != null) {
+            return ListTile(
+              leading: Text(builtin.emoji,
+                  style: const TextStyle(fontSize: 20)),
+              title: Text(builtin.label),
+              subtitle: Text(
+                settings.customModuleQuestions[key] ?? builtin.description,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ModuleEditScreen(moduleKey: key),
+                ),
+              ),
+            );
+          }
+          final customMatches =
+              settings.customModules.where((m) => m.id == key);
+          if (customMatches.isEmpty) return const SizedBox.shrink();
+          final custom = customMatches.first;
+          return ListTile(
+            leading: custom.emoji.isNotEmpty
+                ? Text(custom.emoji, style: const TextStyle(fontSize: 20))
+                : const Icon(Icons.tune),
+            title: Text(custom.name),
+            subtitle: Text(custom.question,
+                maxLines: 1, overflow: TextOverflow.ellipsis),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => ModuleEditScreen(moduleKey: key),
+              ),
+            ),
+          );
+        }).toList(),
       ),
+    );
+  }
+}
+
+// ── Per-module edit screen ────────────────────────────────────────────────────
+
+class ModuleEditScreen extends StatefulWidget {
+  final String? moduleKey; // null = create new custom module
+
+  const ModuleEditScreen({super.key, this.moduleKey});
+
+  @override
+  State<ModuleEditScreen> createState() => _ModuleEditScreenState();
+}
+
+class _ModuleEditScreenState extends State<ModuleEditScreen> {
+  AppModule? _builtin;
+  CustomModule? _custom;
+
+  late TextEditingController _questionCtrl;
+  late TextEditingController _nameCtrl;
+  late TextEditingController _emojiCtrl;
+  late TextEditingController _optionAddCtrl;
+  late TextEditingController _conditionalTriggerCtrl;
+  late TextEditingController _conditionalQuestionCtrl;
+  late TextEditingController _conditionalOptionAddCtrl;
+  late ResponseType _responseType;
+  late List<String> _options;
+  late List<String> _conditionalOptions;
+  bool _isDirty = false;
+
+  static const _builtinOptionKeys = {
+    'emotions', 'symptoms', 'sports', 'leisure', 'food', 'health'
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    final settings = context.read<SettingsProvider>().settings;
+
+    if (widget.moduleKey != null) {
+      final builtinMatches =
+          AppModule.all.where((m) => m.key == widget.moduleKey);
+      _builtin = builtinMatches.isEmpty ? null : builtinMatches.first;
+      if (_builtin == null) {
+        final customMatches =
+            settings.customModules.where((m) => m.id == widget.moduleKey);
+        _custom = customMatches.isEmpty ? null : customMatches.first;
+      }
+    }
+
+    if (_builtin != null) {
+      _questionCtrl = TextEditingController(
+          text: settings.customModuleQuestions[_builtin!.key] ?? '');
+      _nameCtrl = TextEditingController();
+      _emojiCtrl = TextEditingController();
+      _responseType = ResponseType.scale;
+      _options = List.from(_getOptions(_builtin!.key, settings));
+      _conditionalTriggerCtrl = TextEditingController();
+      _conditionalQuestionCtrl = TextEditingController();
+      _conditionalOptions = [];
+    } else if (_custom != null) {
+      _questionCtrl = TextEditingController(text: _custom!.question);
+      _nameCtrl = TextEditingController(text: _custom!.name);
+      _emojiCtrl = TextEditingController(text: _custom!.emoji);
+      _responseType = _custom!.responseType;
+      _options = List.from(_custom!.options);
+      _conditionalTriggerCtrl = TextEditingController(text: _custom!.conditionalTrigger ?? '');
+      _conditionalQuestionCtrl = TextEditingController(text: _custom!.conditionalQuestion ?? '');
+      _conditionalOptions = List.from(_custom!.conditionalOptions);
+    } else {
+      _questionCtrl = TextEditingController();
+      _nameCtrl = TextEditingController();
+      _emojiCtrl = TextEditingController();
+      _responseType = ResponseType.scale;
+      _options = [];
+      _conditionalTriggerCtrl = TextEditingController();
+      _conditionalQuestionCtrl = TextEditingController();
+      _conditionalOptions = [];
+    }
+    _optionAddCtrl = TextEditingController();
+    _conditionalOptionAddCtrl = TextEditingController();
+
+    for (final ctrl in [
+      _questionCtrl, _nameCtrl, _emojiCtrl,
+      _conditionalTriggerCtrl, _conditionalQuestionCtrl,
+    ]) {
+      ctrl.addListener(_markDirty);
+    }
+  }
+
+  void _markDirty() {
+    if (!_isDirty) setState(() => _isDirty = true);
+  }
+
+  @override
+  void dispose() {
+    _questionCtrl.dispose();
+    _nameCtrl.dispose();
+    _emojiCtrl.dispose();
+    _optionAddCtrl.dispose();
+    _conditionalTriggerCtrl.dispose();
+    _conditionalQuestionCtrl.dispose();
+    _conditionalOptionAddCtrl.dispose();
+    super.dispose();
+  }
+
+  List<String> _getOptions(String key, AppSettings s) => switch (key) {
+        'emotions' => s.customEmotions,
+        'symptoms' => s.customSymptoms,
+        'sports' => s.customSports,
+        'leisure' => s.customLeisure,
+        'food' => s.customFoods,
+        'health' => s.customSickTags,
+        _ => const [],
+      };
+
+  AppSettings _setOptions(String key, List<String> opts, AppSettings s) =>
+      switch (key) {
+        'emotions' => s.copyWith(customEmotions: opts),
+        'symptoms' => s.copyWith(customSymptoms: opts),
+        'sports' => s.copyWith(customSports: opts),
+        'leisure' => s.copyWith(customLeisure: opts),
+        'food' => s.copyWith(customFoods: opts),
+        'health' => s.copyWith(customSickTags: opts),
+        _ => s,
+      };
+
+  bool get _hasOptionList {
+    if (_builtin != null) return _builtinOptionKeys.contains(_builtin!.key);
+    return _responseType == ResponseType.multiSelect ||
+        _responseType == ResponseType.singleSelect ||
+        _responseType == ResponseType.conditional;
+  }
+
+  void _addOption() {
+    final v = _optionAddCtrl.text.trim();
+    if (v.isEmpty) return;
+    setState(() {
+      _options.add(v);
+      _optionAddCtrl.clear();
+      _isDirty = true;
+    });
+  }
+
+  void _addConditionalOption() {
+    final v = _conditionalOptionAddCtrl.text.trim();
+    if (v.isEmpty) return;
+    setState(() {
+      _conditionalOptions.add(v);
+      _conditionalOptionAddCtrl.clear();
+      _isDirty = true;
+    });
+  }
+
+  Future<void> _save() async {
+    final settings = context.read<SettingsProvider>().settings;
+
+    if (_builtin != null) {
+      final question = _questionCtrl.text.trim();
+      final questionMap =
+          Map<String, String>.from(settings.customModuleQuestions);
+      if (question.isEmpty) {
+        questionMap.remove(_builtin!.key);
+      } else {
+        questionMap[_builtin!.key] = question;
+      }
+      var updated = settings.copyWith(customModuleQuestions: questionMap);
+      if (_hasOptionList) updated = _setOptions(_builtin!.key, _options, updated);
+      await context.read<SettingsProvider>().update(updated);
+    } else if (_custom != null) {
+      final name = _nameCtrl.text.trim();
+      final question = _questionCtrl.text.trim();
+      if (name.isEmpty || question.isEmpty) return;
+      final trigger = _conditionalTriggerCtrl.text.trim();
+      final condQuestion = _conditionalQuestionCtrl.text.trim();
+      final updatedModule = CustomModule(
+        id: _custom!.id,
+        name: name,
+        emoji: _emojiCtrl.text.trim(),
+        question: question,
+        responseType: _responseType,
+        options: List.from(_options),
+        conditionalTrigger: trigger.isEmpty ? null : trigger,
+        conditionalQuestion: condQuestion.isEmpty ? null : condQuestion,
+        conditionalOptions: List.from(_conditionalOptions),
+      );
+      await context.read<SettingsProvider>().update(settings.copyWith(
+            customModules: settings.customModules
+                .map((m) => m.id == _custom!.id ? updatedModule : m)
+                .toList(),
+          ));
+    } else {
+      final name = _nameCtrl.text.trim();
+      final question = _questionCtrl.text.trim();
+      if (name.isEmpty || question.isEmpty) return;
+      final trigger = _conditionalTriggerCtrl.text.trim();
+      final condQuestion = _conditionalQuestionCtrl.text.trim();
+      final newModule = CustomModule.create(
+        name: name,
+        emoji: _emojiCtrl.text.trim(),
+        question: question,
+        responseType: _responseType,
+        options: List.from(_options),
+        conditionalTrigger: trigger.isEmpty ? null : trigger,
+        conditionalQuestion: condQuestion.isEmpty ? null : condQuestion,
+        conditionalOptions: List.from(_conditionalOptions),
+      );
+      await context.read<SettingsProvider>().update(settings.copyWith(
+            customModules: [...settings.customModules, newModule],
+            enabledModules: {...settings.enabledModules, newModule.id},
+            moduleOrder: [...settings.moduleOrder, newModule.id],
+          ));
+    }
+    if (!mounted) return;
+    Navigator.of(context).pop();
+  }
+
+  Future<void> _deleteModule() async {
+    final settings = context.read<SettingsProvider>().settings;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('Remove "${_custom!.name}"?'),
+        content: const Text(
+          'This module will be removed from your questionnaire. '
+          'Past responses are kept silently in your data.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    // ignore: use_build_context_synchronously
+    await context.read<SettingsProvider>().update(settings.copyWith(
+          customModules:
+              settings.customModules.where((m) => m.id != _custom!.id).toList(),
+          enabledModules: Set<String>.from(settings.enabledModules)
+            ..remove(_custom!.id),
+          moduleOrder:
+              settings.moduleOrder.where((k) => k != _custom!.id).toList(),
+        ));
+    if (!mounted) return;
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    final title = _builtin != null
+        ? '${_builtin!.emoji} ${_builtin!.label}'
+        : _custom != null
+            ? 'Edit module'
+            : 'New module';
+
+    return PopScope(
+      canPop: !_isDirty,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final leave = await showDialog<bool>(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('Discard changes?'),
+            content: const Text('You have unsaved edits. Discard them?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Keep editing'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Discard'),
+              ),
+            ],
+          ),
+        );
+        if (leave == true && mounted) Navigator.of(context).pop();
+      },
+      child: Scaffold(
+      appBar: AppBar(
+        title: Text(title),
+        actions: [
+          TextButton(onPressed: _save, child: const Text('Save')),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          if (_builtin == null) ...[
+            Row(children: [
+              SizedBox(
+                width: 70,
+                child: TextField(
+                  controller: _emojiCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Icon',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _nameCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Module name *',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+            ]),
+            const SizedBox(height: 16),
+          ],
+          TextField(
+            controller: _questionCtrl,
+            decoration: InputDecoration(
+              labelText: 'Question',
+              hintText: _builtin != null ? 'Leave blank to use default' : null,
+              border: const OutlineInputBorder(),
+            ),
+            maxLines: 2,
+          ),
+          const SizedBox(height: 16),
+          if (_builtin == null) ...[
+            Text('Response type', style: theme.textTheme.labelLarge),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: ResponseType.values.map((rt) {
+                final label = switch (rt) {
+                  ResponseType.scale => '0–10 Scale',
+                  ResponseType.multiSelect => 'Multi-select',
+                  ResponseType.singleSelect => 'Single-select',
+                  ResponseType.text => 'Free text',
+                  ResponseType.conditional => 'Conditional',
+                };
+                return ChoiceChip(
+                  label: Text(label),
+                  selected: _responseType == rt,
+                  onSelected: (_) => setState(() {
+                    _responseType = rt;
+                    _isDirty = true;
+                    if (rt != ResponseType.multiSelect &&
+                        rt != ResponseType.singleSelect &&
+                        rt != ResponseType.conditional) {
+                      _options.clear();
+                    }
+                    if (rt != ResponseType.conditional) {
+                      _conditionalOptions.clear();
+                    }
+                  }),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 16),
+          ],
+          if (_hasOptionList) ...[
+            Text(
+              _builtin != null
+                  ? 'Options'
+                  : _responseType == ResponseType.conditional
+                      ? 'Primary options'
+                      : 'Answer options',
+              style: theme.textTheme.labelLarge,
+            ),
+            const SizedBox(height: 8),
+            ..._options.map((opt) => ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(opt),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => setState(() { _options.remove(opt); _isDirty = true; }),
+                  ),
+                )),
+            _AddItemRow(
+              controller: _optionAddCtrl,
+              hint: 'Add an option',
+              onAdd: _addOption,
+            ),
+            const SizedBox(height: 16),
+          ],
+          if (_builtin == null && _responseType == ResponseType.conditional) ...[
+            TextField(
+              controller: _conditionalTriggerCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Trigger option',
+                hintText: 'Which option reveals the follow-up?',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _conditionalQuestionCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Follow-up question (optional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text('Follow-up options', style: theme.textTheme.labelLarge),
+            const SizedBox(height: 8),
+            ..._conditionalOptions.map((opt) => ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(opt),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () =>
+                        setState(() { _conditionalOptions.remove(opt); _isDirty = true; }),
+                  ),
+                )),
+            _AddItemRow(
+              controller: _conditionalOptionAddCtrl,
+              hint: 'Add a follow-up option',
+              onAdd: _addConditionalOption,
+            ),
+            const SizedBox(height: 16),
+          ],
+          if (_custom != null) ...[
+            const Divider(),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.delete_outline, color: theme.colorScheme.error),
+              title: Text('Remove module',
+                  style: TextStyle(color: theme.colorScheme.error)),
+              subtitle: const Text('Past responses are kept in your data'),
+              onTap: _deleteModule,
+            ),
+          ],
+        ],
+      ),
+    ),
+    );
+  }
+}
+
+class _AddItemRow extends StatelessWidget {
+  final TextEditingController controller;
+  final String hint;
+  final VoidCallback onAdd;
+
+  const _AddItemRow({
+    required this.controller,
+    required this.hint,
+    required this.onAdd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: controller,
+              decoration: InputDecoration(
+                hintText: hint,
+                border: const OutlineInputBorder(),
+                isDense: true,
+              ),
+              onSubmitted: (_) => onAdd(),
+            ),
+          ),
+          const SizedBox(width: 8),
+          FilledButton(
+            onPressed: onAdd,
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── About screen ──────────────────────────────────────────────────────────────
+
+class AboutScreen extends StatelessWidget {
+  const AboutScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
+    final outline = theme.colorScheme.outline;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('About sarAPP')),
+      body: ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          // App identity
+          Center(
+            child: Column(
+              children: [
+                Icon(Icons.favorite_border, size: 56, color: primary),
+                const SizedBox(height: 12),
+                Text('sarAPP',
+                    style: theme.textTheme.headlineSmall
+                        ?.copyWith(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text('v0.1 · Free & open-source',
+                    style:
+                        theme.textTheme.bodySmall?.copyWith(color: outline)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+
+          // Philosophy
+          _AboutSection(
+            icon: Icons.tune,
+            title: 'Track what you choose',
+            body:
+                'sarAPP lets you track different dimensions of your day. ' 
+                'You decide what dimensions matter to you. Enable or '
+                'disable any module at any time in Settings. '
+                'There is no required field.',
+          ),
+          const SizedBox(height: 20),
+          _AboutSection(
+            icon: Icons.lock_outline,
+            title: 'Your data, your device',
+            body:
+                'Everything you log stays on your phone. No account, no cloud '
+                'sync, (currenty) no analytics. Your data is stored locally in a private '
+                'database and can be exported to CSV whenever you want.',
+          ),
+          const SizedBox(height: 20),
+          _AboutSection(
+            icon: Icons.code,
+            title: 'Free and open-source',
+            body:
+                'sarAPP is free to use and its source code is open. You can '
+                'inspect exactly what it does, contribute improvements, or '
+                'adapt it for your own needs.',
+          ),
+          const SizedBox(height: 32),
+
+          Center(
+            child: Text(
+              'Data stays on your device — always.',
+              style: theme.textTheme.bodySmall?.copyWith(color: outline),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AboutSection extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String body;
+
+  const _AboutSection(
+      {required this.icon, required this.title, required this.body});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 24, color: theme.colorScheme.primary),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title,
+                  style: theme.textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              Text(body,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant)),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

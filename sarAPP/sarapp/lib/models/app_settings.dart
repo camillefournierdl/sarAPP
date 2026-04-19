@@ -1,4 +1,5 @@
 import 'app_module.dart';
+import 'custom_module.dart';
 
 class AppSettings {
   final bool menstruationTracking;
@@ -11,6 +12,15 @@ class AppSettings {
   /// null = follow device locale, 'monday', or 'sunday'
   final String? calendarStartDay;
   final bool showHighFertility;
+  final List<String> customEmotions;
+  final List<String> customSymptoms;
+  final List<String> customSports;
+  final List<String> customLeisure;
+  final List<String> customFoods;
+  final List<String> customSickTags;
+  final List<CustomModule> customModules;
+  final Map<String, String> customModuleQuestions;
+  final List<String> moduleOrder;
 
   const AppSettings({
     this.menstruationTracking = true,
@@ -20,10 +30,34 @@ class AppSettings {
     this.onboardingComplete = false,
     this.lastPeriodStart,
     this.enabledModules = const {
-      'happiness', 'emotions', 'sleep', 'weather', 'work', 'activity', 'food', 'notes'
+      'happiness', 'emotions', 'sleep', 'weather', 'health', 'work', 'sports', 'leisure', 'food', 'notes'
     },
     this.calendarStartDay,
     this.showHighFertility = false,
+    this.customEmotions = const [
+      '😊 Happy', '😢 Sad', '😤 Angry', '😰 Anxious', '😴 Tired', '⚡ Energized',
+    ],
+    this.customSymptoms = const [
+      'cramps', 'bloating', 'headache', 'fatigue', 'mood swings', 'breast tenderness', 'back pain', 'acne',
+    ],
+    this.customSports = const [
+      '🏋️ Weight lifting', '🏃 Intense cardio', '🚴 Endurance', '💃 Dance', '🧗 Climbing',
+    ],
+    this.customLeisure = const [
+      '📖 Reading', '🌱 Gardening', '🎲 Board games', '🎮 Gaming',
+    ],
+    this.customFoods = const [
+      '🌾 Gluten', '🥛 Lactose', '🍬 Sugars', '🍗 Chicken', '🐟 Fish',
+    ],
+    this.customSickTags = const [
+      '🤧 Cold', '🤒 Flu', '🤢 Nausea', '🤕 Headache', '🔥 Fever', '🫄 Digestive issues', '😮‍💨 Fatigue',
+    ],
+    this.customModules = const [],
+    this.customModuleQuestions = const {},
+    this.moduleOrder = const [
+      'happiness', 'emotions', 'sleep', 'weather',
+      'health', 'work', 'sports', 'leisure', 'food', 'symptoms', 'notes',
+    ],
   });
 
   bool get isMenstruationTracking => menstruationTracking;
@@ -40,6 +74,15 @@ class AppSettings {
     Set<String>? enabledModules,
     Object? calendarStartDay = _sentinel,
     bool? showHighFertility,
+    List<String>? customEmotions,
+    List<String>? customSymptoms,
+    List<String>? customSports,
+    List<String>? customLeisure,
+    List<String>? customFoods,
+    List<String>? customSickTags,
+    List<CustomModule>? customModules,
+    Map<String, String>? customModuleQuestions,
+    List<String>? moduleOrder,
   }) =>
       AppSettings(
         menstruationTracking: menstruationTracking ?? this.menstruationTracking,
@@ -53,7 +96,19 @@ class AppSettings {
             ? this.calendarStartDay
             : calendarStartDay as String?,
         showHighFertility: showHighFertility ?? this.showHighFertility,
+        customEmotions: customEmotions ?? this.customEmotions,
+        customSymptoms: customSymptoms ?? this.customSymptoms,
+        customSports: customSports ?? this.customSports,
+        customLeisure: customLeisure ?? this.customLeisure,
+        customFoods: customFoods ?? this.customFoods,
+        customSickTags: customSickTags ?? this.customSickTags,
+        customModules: customModules ?? this.customModules,
+        customModuleQuestions: customModuleQuestions ?? this.customModuleQuestions,
+        moduleOrder: moduleOrder ?? this.moduleOrder,
       );
+
+  String questionFor(String moduleKey, String defaultQuestion) =>
+      customModuleQuestions[moduleKey] ?? defaultQuestion;
 
   /// Returns a copy with [key] toggled on or off.
   AppSettings withModuleToggled(String key) {

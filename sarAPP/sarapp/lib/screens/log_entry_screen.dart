@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../models/app_module.dart';
+import '../models/custom_module.dart';
 import '../models/entry.dart';
 import '../providers/entries_provider.dart';
 import '../providers/settings_provider.dart';
@@ -9,8 +11,6 @@ import '../widgets/symptom_selector.dart';
 import '../models/app_settings.dart';
 
 class LogEntryScreen extends StatefulWidget {
-  /// Pass an existing entry to edit, or null to create a new one.
-  /// Provide [date] (YYYY-MM-DD) when creating a new entry for a specific day.
   final Entry? existing;
   final String? date;
 
@@ -27,23 +27,32 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
   late bool _periodStart;
   late bool _periodEnd;
   late List<String> _symptoms;
-  // null = user hasn't rated; becomes 0–10 once the slider is touched
   int? _happinessScore;
   int? _sleepScore;
   int? _weatherScore;
   String? _workDay;
   late List<String> _foods;
-  late List<String> _activities;
+  late List<String> _sports;
+  late List<String> _leisure;
   String? _healthStatus;
   late List<String> _sickTags;
   late TextEditingController _notesController;
-  int _step = 0;
+  int? _libidoScore;
+  String? _hadSex;
+  int? _waterGlasses;
+  Map<String, dynamic> _customData = {};
+  final Map<String, TextEditingController> _customTextControllers = {};
+  int _pageIndex = 0;
+
+  static const int _modulesPerPage = 3;
 
   @override
   void initState() {
     super.initState();
     final e = widget.existing;
-    _date = e?.date ?? widget.date ?? DateFormat('yyyy-MM-dd').format(DateTime.now());
+    _date = e?.date ??
+        widget.date ??
+        DateFormat('yyyy-MM-dd').format(DateTime.now());
     _emotions = List.from(e?.emotions ?? []);
     _cyclePhase = e?.cyclePhase;
     _periodStart = e?.periodStart ?? false;
@@ -54,15 +63,23 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
     _weatherScore = e?.weatherScore;
     _workDay = e?.workDay;
     _foods = List.from(e?.foods ?? []);
-    _activities = List.from(e?.activities ?? []);
+    _sports = List.from(e?.sports ?? []);
+    _leisure = List.from(e?.leisure ?? []);
     _healthStatus = e?.healthStatus;
     _sickTags = List.from(e?.sickTags ?? []);
     _notesController = TextEditingController(text: e?.notes ?? '');
+    _libidoScore = e?.libidoScore;
+    _hadSex = e?.hadSex;
+    _waterGlasses = e?.waterGlasses;
+    _customData = Map.from(e?.customData ?? {});
   }
 
   @override
   void dispose() {
     _notesController.dispose();
+    for (final ctrl in _customTextControllers.values) {
+      ctrl.dispose();
+    }
     super.dispose();
   }
 
@@ -72,28 +89,15 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
     return DateFormat('MMM d, yyyy').format(DateTime.parse(_date));
   }
 
-  /// Returns the indices of logical pages (0=Mood, 1=Health, 2=Lifestyle)
-  /// that have at least one enabled module, in order.
-  List<int> _activePages(AppSettings settings) {
-    final pages = <int>[];
-    // Page 0 — Mood
-    if (['happiness', 'emotions', 'sleep', 'weather']
-        .any(settings.isModuleEnabled)) pages.add(0);
-    // Page 1 — Health
-    if (settings.isModuleEnabled('health')) pages.add(1);
-    // Page 2 — Lifestyle
-    if (settings.isModuleEnabled('work') ||
-        settings.isModuleEnabled('activity') ||
-        settings.isModuleEnabled('food') ||
-        settings.isModuleEnabled('notes') ||
-        (settings.isMenstruationTracking &&
-            settings.isModuleEnabled('symptoms'))) pages.add(2);
-    // Always show at least one page
-    if (pages.isEmpty) pages.add(0);
-    return pages;
-  }
-
   Future<void> _save() async {
+    for (final e in _customTextControllers.entries) {
+      _customData[e.key] = e.value.text.trim();
+    }
+    _customData.removeWhere((_, v) {
+      if (v == null || v == '') return true;
+      if (v is Map) return v['value'] == null;
+      return false;
+    });
     final entry = Entry.create(
       date: _date,
       emotions: _emotions,
@@ -106,14 +110,237 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
       weatherScore: _weatherScore,
       workDay: _workDay,
       foods: _foods,
-      activities: _activities,
+      sports: _sports,
+      leisure: _leisure,
       healthStatus: _healthStatus,
       sickTags: _sickTags,
       notes: _notesController.text.trim(),
+      libidoScore: _libidoScore,
+      hadSex: _hadSex,
+      waterGlasses: _waterGlasses,
+      customData: Map.from(_customData),
     );
     await context.read<EntriesProvider>().saveEntry(entry);
     if (!mounted) return;
     Navigator.of(context).pop();
+  }
+
+  /// Returns the widgets for a built-in module. Returns null if the module
+  /// should be hidden (e.g., symptoms when menstruation tracking is off).
+  List<Widget>? _buildBuiltinModule(
+      AppModule m, AppSettings settings, bool isFemale) {
+    if (m.menstruationOnly && !isFemale) return null;
+
+    Widget child;
+    switch (m.key) {
+      case 'happiness':
+        child = _HappinessSlider(
+          value: _happinessScore,
+          onChanged: (v) => setState(() => _happinessScore = v),
+        );
+      case 'emotions':
+        child = EmotionTagSelector(
+          options: settings.customEmotions,
+          selected: _emotions,
+          onChanged: (v) => setState(() => _emotions = v),
+        );
+      case 'sleep':
+        child = _HappinessSlider(
+          value: _sleepScore,
+          onChanged: (v) => setState(() => _sleepScore = v),
+          labelLow: '🪫',
+          labelHigh: '🔋',
+        );
+      case 'weather':
+        child = _HappinessSlider(
+          value: _weatherScore,
+          onChanged: (v) => setState(() => _weatherScore = v),
+          labelLow: '🌧️',
+          labelHigh: '☀️',
+        );
+      case 'health':
+        return [
+          _Section(
+            title: settings.questionFor(
+                'health', 'How did you feel physically today?'),
+            child: _HealthStatusSelector(
+              value: _healthStatus,
+              onChanged: (v) => setState(() {
+                _healthStatus = v;
+                if (v == 'healthy') _sickTags = [];
+              }),
+            ),
+          ),
+          if (_healthStatus == 'sick') ...[
+            const SizedBox(height: 16),
+            _Section(
+              title: 'What was wrong? (optional)',
+              child: _ChipSelector(
+                options: settings.customSickTags,
+                selected: _sickTags,
+                onChanged: (v) => setState(() => _sickTags = v),
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
+        ];
+      case 'work':
+        child = _WorkDaySelector(
+          value: _workDay,
+          onChanged: (v) => setState(() => _workDay = v),
+        );
+      case 'sports':
+        child = _ChipSelector(
+          options: settings.customSports,
+          selected: _sports,
+          onChanged: (v) => setState(() => _sports = v),
+        );
+      case 'leisure':
+        child = _ChipSelector(
+          options: settings.customLeisure,
+          selected: _leisure,
+          onChanged: (v) => setState(() => _leisure = v),
+        );
+      case 'food':
+        child = _ChipSelector(
+          options: settings.customFoods,
+          selected: _foods,
+          onChanged: (v) => setState(() => _foods = v),
+        );
+      case 'symptoms':
+        child = SymptomSelector(
+          options: settings.customSymptoms,
+          selected: _symptoms,
+          onChanged: (v) => setState(() => _symptoms = v),
+        );
+      case 'notes':
+        child = TextField(
+          controller: _notesController,
+          maxLines: 4,
+          decoration: const InputDecoration(
+            hintText: 'Anything else on your mind…',
+            border: OutlineInputBorder(),
+          ),
+        );
+      case 'libido':
+        child = _HappinessSlider(
+          value: _libidoScore,
+          onChanged: (v) => setState(() => _libidoScore = v),
+          labelLow: '💤',
+          labelHigh: '🔥',
+        );
+      case 'sex':
+        child = _SexSelector(
+          value: _hadSex,
+          onChanged: (v) => setState(() => _hadSex = v),
+        );
+      case 'water':
+        child = _HappinessSlider(
+          value: _waterGlasses,
+          onChanged: (v) => setState(() => _waterGlasses = v),
+          labelLow: '🚱',
+          labelHigh: '💧',
+        );
+      default:
+        return null;
+    }
+
+    return [
+      _Section(
+        title: settings.questionFor(m.key, m.description),
+        child: child,
+      ),
+      const SizedBox(height: 16),
+    ];
+  }
+
+  Widget _buildCustomModuleInput(CustomModule m) {
+    switch (m.responseType) {
+      case ResponseType.scale:
+        final val = _customData[m.id] as int?;
+        return _HappinessSlider(
+          value: val,
+          onChanged: (v) => setState(() => _customData[m.id] = v),
+        );
+      case ResponseType.multiSelect:
+        final selected = List<String>.from(_customData[m.id] as List? ?? []);
+        return _ChipSelector(
+          options: m.options,
+          selected: selected,
+          onChanged: (v) => setState(() => _customData[m.id] = v),
+        );
+      case ResponseType.singleSelect:
+        final current = _customData[m.id] as String?;
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: m.options
+              .map((opt) => ChoiceChip(
+                    label: Text(opt),
+                    selected: current == opt,
+                    onSelected: (on) =>
+                        setState(() => _customData[m.id] = on ? opt : null),
+                  ))
+              .toList(),
+        );
+      case ResponseType.text:
+        final ctrl = _customTextControllers.putIfAbsent(
+          m.id,
+          () => TextEditingController(
+              text: _customData[m.id] as String? ?? ''),
+        );
+        return TextField(
+          controller: ctrl,
+          maxLines: 3,
+          decoration: const InputDecoration(border: OutlineInputBorder()),
+          onChanged: (v) => _customData[m.id] = v,
+        );
+      case ResponseType.conditional:
+        final data = (_customData[m.id] as Map?)?.cast<String, dynamic>() ?? {};
+        final primary = data['value'] as String?;
+        final followup = List<String>.from(data['followup'] as List? ?? []);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: m.options.map((opt) => ChoiceChip(
+                label: Text(opt),
+                selected: primary == opt,
+                onSelected: (on) => setState(() {
+                  final val = on ? opt : null;
+                  _customData[m.id] = {
+                    'value': val,
+                    'followup': val == m.conditionalTrigger ? followup : [],
+                  };
+                }),
+              )).toList(),
+            ),
+            if (primary == m.conditionalTrigger &&
+                m.conditionalOptions.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              if (m.conditionalQuestion != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text(
+                    m.conditionalQuestion!,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                  ),
+                ),
+              _ChipSelector(
+                options: m.conditionalOptions,
+                selected: followup,
+                onChanged: (v) => setState(() {
+                  _customData[m.id] = {'value': primary, 'followup': v};
+                }),
+              ),
+            ],
+          ],
+        );
+    }
   }
 
   @override
@@ -122,241 +349,143 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
     final isFemale = settings.isMenstruationTracking;
     final theme = Theme.of(context);
 
-    final activePages = _activePages(settings);
-    final isLastStep = _step == activePages.length - 1;
-    final currentPage = activePages[_step];
+    // Build ordered list of enabled module keys
+    final orderedKeys = settings.moduleOrder
+        .where(settings.isModuleEnabled)
+        .toList();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_appBarTitle()),
-        leading: _step > 0
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => setState(() => _step--),
-              )
-            : null,
-        actions: [
-          if (!isLastStep)
-            TextButton(
-              onPressed: () => setState(() => _step++),
-              child: const Text('Next'),
-            )
-          else
-            TextButton(
-              onPressed: _save,
-              child: const Text('Save'),
-            ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // ── Step indicator ────────────────────────────────────────────
-          _StepDots(current: _step, total: activePages.length),
-
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(16),
+    if (orderedKeys.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: Text(_appBarTitle())),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // Date
+                Icon(Icons.tune,
+                    size: 56,
+                    color: theme.colorScheme.primary.withAlpha(120)),
+                const SizedBox(height: 20),
+                Text('No modules enabled',
+                    style: theme.textTheme.titleMedium,
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 8),
                 Text(
-                  DateFormat('EEEE, MMMM d, yyyy').format(DateTime.parse(_date)),
-                  style: theme.textTheme.titleMedium,
+                  'Enable at least one module in Settings to start logging.',
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(color: theme.colorScheme.outline),
+                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),
-
-                if (currentPage == 0) ...[
-                  // ── Page 0: Mood ──────────────────────────────────────
-                  if (settings.isModuleEnabled('happiness')) ...[
-                    _Section(
-                      title: 'How happy did you feel today? (0 – 10)',
-                      child: _HappinessSlider(
-                        value: _happinessScore,
-                        onChanged: (v) => setState(() => _happinessScore = v),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  if (settings.isModuleEnabled('emotions')) ...[
-                    _Section(
-                      title: 'How are you feeling?',
-                      child: EmotionTagSelector(
-                        selected: _emotions,
-                        onChanged: (v) => setState(() => _emotions = v),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  if (settings.isModuleEnabled('sleep')) ...[
-                    _Section(
-                      title: 'Overall, how well-rested did you feel with your sleep last night? (0 – 10)',
-                      child: _HappinessSlider(
-                        value: _sleepScore,
-                        onChanged: (v) => setState(() => _sleepScore = v),
-                        labelLow: '🪫',
-                        labelHigh: '🔋',
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  if (settings.isModuleEnabled('weather')) ...[
-                    _Section(
-                      title: 'How was the weather today? (0 – 10)',
-                      child: _HappinessSlider(
-                        value: _weatherScore,
-                        onChanged: (v) => setState(() => _weatherScore = v),
-                        labelLow: '🌧️',
-                        labelHigh: '☀️',
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                ] else if (currentPage == 1) ...[
-                  // ── Page 1: Health ────────────────────────────────────
-                  _Section(
-                    title: 'How did you feel physically today?',
-                    child: _HealthStatusSelector(
-                      value: _healthStatus,
-                      onChanged: (v) => setState(() {
-                        _healthStatus = v;
-                        if (v == 'healthy') _sickTags = [];
-                      }),
-                    ),
-                  ),
-                  if (_healthStatus == 'sick') ...[
-                    const SizedBox(height: 16),
-                    _Section(
-                      title: 'What was wrong? (optional)',
-                      child: _ChipSelector(
-                        options: const [
-                          '🤧 Cold',
-                          '🤒 Flu',
-                          '🤢 Nausea',
-                          '🤕 Headache',
-                          '🔥 Fever',
-                          '🫄 Digestive issues',
-                          '😮‍💨 Fatigue',
-                        ],
-                        selected: _sickTags,
-                        onChanged: (v) => setState(() => _sickTags = v),
-                      ),
-                    ),
-                  ],
-                ] else ...[
-                  // ── Page 2: Lifestyle ─────────────────────────────────
-                  if (settings.isModuleEnabled('work')) ...[
-                    _Section(
-                      title: 'How was your work day?',
-                      child: _WorkDaySelector(
-                        value: _workDay,
-                        onChanged: (v) => setState(() => _workDay = v),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  if (settings.isModuleEnabled('activity')) ...[
-                    _Section(
-                      title: 'Physical activity today?',
-                      child: _ChipSelector(
-                        options: const [
-                          '🏋️ Weight lifting',
-                          '🏃 Intense cardio',
-                          '🚴 Endurance',
-                          '💃 Dance',
-                          '🧗 Climbing',
-                        ],
-                        selected: _activities,
-                        onChanged: (v) => setState(() => _activities = v),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  if (settings.isModuleEnabled('food')) ...[
-                    _Section(
-                      title: 'What did you eat today?',
-                      child: _ChipSelector(
-                        options: const [
-                          '🌾 Gluten',
-                          '🥛 Lactose',
-                          '🍬 Sugars',
-                          '🍗 Chicken',
-                          '🐟 Fish',
-                        ],
-                        selected: _foods,
-                        onChanged: (v) => setState(() => _foods = v),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  if (isFemale && settings.isModuleEnabled('symptoms')) ...[
-                    _Section(
-                      title: 'Symptoms',
-                      child: SymptomSelector(
-                        selected: _symptoms,
-                        onChanged: (v) => setState(() => _symptoms = v),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  if (settings.isModuleEnabled('notes'))
-                    _Section(
-                      title: 'Notes',
-                      child: TextField(
-                        controller: _notesController,
-                        maxLines: 4,
-                        decoration: const InputDecoration(
-                          hintText: 'Anything else on your mind…',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                ],
-                const SizedBox(height: 16),
-                if (!isLastStep)
-                  Center(
-                    child: FilledButton.icon(
-                      onPressed: () => setState(() => _step++),
-                      icon: const Icon(Icons.arrow_forward),
-                      label: const Text('Continue'),
-                    ),
-                  ),
-                const SizedBox(height: 32),
+                FilledButton.icon(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.settings),
+                  label: const Text('Go to Settings'),
+                ),
               ],
             ),
           ),
+        ),
+      );
+    }
+
+    // Chunk the enabled keys into pages of _modulesPerPage
+    final pages = <List<String>>[];
+    for (var i = 0; i < orderedKeys.length; i += _modulesPerPage) {
+      pages.add(orderedKeys.sublist(
+          i, (i + _modulesPerPage).clamp(0, orderedKeys.length)));
+    }
+
+    final currentPage = _pageIndex.clamp(0, pages.length - 1);
+    final isLastPage = currentPage == pages.length - 1;
+
+    final pageWidgets = <Widget>[];
+    for (final key in pages[currentPage]) {
+      final builtinMatches = AppModule.all.where((m) => m.key == key);
+      if (builtinMatches.isNotEmpty) {
+        final widgets =
+            _buildBuiltinModule(builtinMatches.first, settings, isFemale);
+        if (widgets != null) pageWidgets.addAll(widgets);
+        continue;
+      }
+      final customMatches = settings.customModules.where((m) => m.id == key);
+      if (customMatches.isNotEmpty) {
+        final m = customMatches.first;
+        pageWidgets.addAll([
+          _Section(title: m.question, child: _buildCustomModuleInput(m)),
+          const SizedBox(height: 16),
+        ]);
+      }
+    }
+
+    return PopScope(
+      canPop: currentPage == 0,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) setState(() => _pageIndex = currentPage - 1);
+      },
+      child: Scaffold(
+      appBar: AppBar(
+        title: Text(_appBarTitle()),
+        actions: [
+          if (isLastPage)
+            TextButton(onPressed: _save, child: const Text('Save')),
         ],
       ),
-    );
-  }
-}
-
-// ── Step dots indicator ───────────────────────────────────────────────────────
-
-class _StepDots extends StatelessWidget {
-  final int current;
-  final int total;
-  const _StepDots({required this.current, required this.total});
-
-  @override
-  Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(total, (i) {
-          final active = i == current;
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            width: active ? 20 : 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: active ? primary : primary.withAlpha(60),
-              borderRadius: BorderRadius.circular(4),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  DateFormat('EEEE, MMMM d, yyyy').format(DateTime.parse(_date)),
+                  style: theme.textTheme.titleMedium,
+                ),
+              ),
+              if (pages.length > 1)
+                Text(
+                  '${currentPage + 1} / ${pages.length}',
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.outline),
+                ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          ...pageWidgets,
+          const SizedBox(height: 16),
+          if (pages.length > 1)
+            Row(
+              children: [
+                if (currentPage > 0)
+                  OutlinedButton.icon(
+                    onPressed: () =>
+                        setState(() => _pageIndex = currentPage - 1),
+                    icon: const Icon(Icons.arrow_back),
+                    label: const Text('Back'),
+                  ),
+                const Spacer(),
+                if (!isLastPage)
+                  FilledButton.icon(
+                    onPressed: () =>
+                        setState(() => _pageIndex = currentPage + 1),
+                    icon: const Icon(Icons.arrow_forward),
+                    label: const Text('Next'),
+                    iconAlignment: IconAlignment.end,
+                  ),
+                if (isLastPage)
+                  FilledButton.icon(
+                    onPressed: _save,
+                    icon: const Icon(Icons.check),
+                    label: const Text('Save'),
+                    iconAlignment: IconAlignment.end,
+                  ),
+              ],
             ),
-          );
-        }),
+          const SizedBox(height: 32),
+        ],
       ),
+    ),
     );
   }
 }
@@ -460,7 +589,29 @@ class _HealthStatusSelector extends StatelessWidget {
     return SegmentedButton<String>(
       segments: const [
         ButtonSegment(value: 'healthy', label: Text('Healthy'), icon: Text('💪')),
-        ButtonSegment(value: 'sick',    label: Text('Sick'),    icon: Text('🤒')),
+        ButtonSegment(value: 'sick', label: Text('Sick'), icon: Text('🤒')),
+      ],
+      selected: value != null ? {value!} : {},
+      emptySelectionAllowed: true,
+      onSelectionChanged: (sel) => onChanged(sel.isEmpty ? null : sel.first),
+    );
+  }
+}
+
+// ── Sex selector ─────────────────────────────────────────────────────────────
+
+class _SexSelector extends StatelessWidget {
+  final String? value;
+  final ValueChanged<String?> onChanged;
+
+  const _SexSelector({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return SegmentedButton<String>(
+      segments: const [
+        ButtonSegment(value: 'yes', label: Text('Yes'), icon: Text('💑')),
+        ButtonSegment(value: 'no', label: Text('No'), icon: Text('🚫')),
       ],
       selected: value != null ? {value!} : {},
       emptySelectionAllowed: true,
@@ -481,7 +632,7 @@ class _WorkDaySelector extends StatelessWidget {
   Widget build(BuildContext context) {
     return SegmentedButton<String>(
       segments: const [
-        ButtonSegment(value: 'off',  label: Text('Day off'),  icon: Text('🌿')),
+        ButtonSegment(value: 'off', label: Text('Day off'), icon: Text('🌿')),
         ButtonSegment(value: 'half', label: Text('Half day'), icon: Text('🌗')),
         ButtonSegment(value: 'full', label: Text('Full day'), icon: Text('💼')),
       ],

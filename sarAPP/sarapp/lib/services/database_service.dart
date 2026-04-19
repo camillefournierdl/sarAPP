@@ -3,6 +3,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/app_module.dart';
 import '../models/app_settings.dart';
+import '../models/custom_module.dart';
 import '../models/entry.dart';
 
 class DatabaseService {
@@ -37,6 +38,10 @@ class DatabaseService {
             health_status    TEXT,
             sick_tags        TEXT    NOT NULL DEFAULT '[]',
             notes            TEXT    NOT NULL DEFAULT '',
+            libido_score     INTEGER,
+            had_sex          TEXT,
+            water_glasses    INTEGER,
+            custom_data      TEXT    NOT NULL DEFAULT '{}',
             created_at       TEXT    NOT NULL
           )
         ''');
@@ -79,8 +84,31 @@ class DatabaseService {
           await db.execute(
               "ALTER TABLE entries ADD COLUMN sick_tags TEXT NOT NULL DEFAULT '[]'");
         }
+        // v6 → v7: split activities into sports + leisure
+        if (oldVersion < 7) {
+          await db.execute(
+              "ALTER TABLE entries ADD COLUMN sports TEXT NOT NULL DEFAULT '[]'");
+          await db.execute(
+              "UPDATE entries SET sports = activities");
+          await db.execute(
+              "ALTER TABLE entries ADD COLUMN leisure TEXT NOT NULL DEFAULT '[]'");
+        }
+        // v7 → v8: add custom_data column for user-defined module responses
+        if (oldVersion < 8) {
+          await db.execute(
+              "ALTER TABLE entries ADD COLUMN custom_data TEXT NOT NULL DEFAULT '{}'");
+        }
+        // v8 → v9: add libido_score, had_sex, water_glasses columns
+        if (oldVersion < 9) {
+          await db.execute(
+              'ALTER TABLE entries ADD COLUMN libido_score INTEGER');
+          await db.execute(
+              'ALTER TABLE entries ADD COLUMN had_sex TEXT');
+          await db.execute(
+              'ALTER TABLE entries ADD COLUMN water_glasses INTEGER');
+        }
       },
-      version: 6,
+      version: 9,
     );
   }
 
@@ -132,12 +160,58 @@ class DatabaseService {
   }
 
   /// Parses a JSON-encoded list of module keys, falling back to defaults.
+  /// Migrates the old 'activity' key to 'sports' + 'leisure'.
   static Set<String> _parseModules(String? raw) {
     if (raw == null) return AppModule.defaultEnabled;
     try {
-      return Set<String>.from(jsonDecode(raw) as List);
+      final modules = Set<String>.from(jsonDecode(raw) as List);
+      if (modules.remove('activity')) {
+        modules.addAll(['sports', 'leisure']);
+      }
+      return modules;
     } catch (_) {
       return AppModule.defaultEnabled;
+    }
+  }
+
+  static List<CustomModule> _parseCustomModules(String? raw) {
+    if (raw == null) return const [];
+    try {
+      final list = jsonDecode(raw) as List;
+      return list.map((e) => CustomModule.fromJson(e as Map<String, dynamic>)).toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  static Map<String, String> _parseQuestionOverrides(String? raw) {
+    if (raw == null) return const {};
+    try {
+      return Map<String, String>.from(jsonDecode(raw) as Map);
+    } catch (_) {
+      return const {};
+    }
+  }
+
+  static List<String> _parseModuleOrder(String? raw) {
+    const defaultOrder = [
+      'happiness', 'emotions', 'sleep', 'weather',
+      'health', 'work', 'sports', 'leisure', 'food', 'symptoms', 'notes',
+    ];
+    if (raw == null) return defaultOrder;
+    try {
+      return List<String>.from(jsonDecode(raw) as List);
+    } catch (_) {
+      return defaultOrder;
+    }
+  }
+
+  static List<String> _parseStringList(String? raw, List<String> fallback) {
+    if (raw == null) return fallback;
+    try {
+      return List<String>.from(jsonDecode(raw) as List);
+    } catch (_) {
+      return fallback;
     }
   }
 
@@ -165,6 +239,28 @@ class DatabaseService {
       calendarStartDay: await _getSetting('calendar_start_day'),
       showHighFertility:
           (await _getSetting('show_high_fertility') ?? 'false') == 'true',
+      customEmotions: _parseStringList(
+          await _getSetting('custom_emotions'),
+          const ['😊 Happy', '😢 Sad', '😤 Angry', '😰 Anxious', '😴 Tired', '⚡ Energized']),
+      customSymptoms: _parseStringList(
+          await _getSetting('custom_symptoms'),
+          const ['cramps', 'bloating', 'headache', 'fatigue', 'mood swings', 'breast tenderness', 'back pain', 'acne']),
+      customSports: _parseStringList(
+          await _getSetting('custom_sports'),
+          const ['🏋️ Weight lifting', '🏃 Intense cardio', '🚴 Endurance', '💃 Dance', '🧗 Climbing']),
+      customLeisure: _parseStringList(
+          await _getSetting('custom_leisure'),
+          const ['📖 Reading', '🌱 Gardening', '🎲 Board games', '🎮 Gaming']),
+      customFoods: _parseStringList(
+          await _getSetting('custom_foods'),
+          const ['🌾 Gluten', '🥛 Lactose', '🍬 Sugars', '🍗 Chicken', '🐟 Fish']),
+      customSickTags: _parseStringList(
+          await _getSetting('custom_sick_tags'),
+          const ['🤧 Cold', '🤒 Flu', '🤢 Nausea', '🤕 Headache', '🔥 Fever', '🫄 Digestive issues', '😮‍💨 Fatigue']),
+      customModules: _parseCustomModules(await _getSetting('custom_modules')),
+      customModuleQuestions: _parseQuestionOverrides(
+          await _getSetting('custom_module_questions')),
+      moduleOrder: _parseModuleOrder(await _getSetting('module_order')),
     );
   }
 
@@ -177,6 +273,17 @@ class DatabaseService {
     await _saveSetting('onboarding_complete', s.onboardingComplete.toString());
     await _saveSetting('enabled_modules', jsonEncode(s.enabledModules.toList()));
     await _saveSetting('show_high_fertility', s.showHighFertility.toString());
+    await _saveSetting('custom_emotions', jsonEncode(s.customEmotions));
+    await _saveSetting('custom_symptoms', jsonEncode(s.customSymptoms));
+    await _saveSetting('custom_sports', jsonEncode(s.customSports));
+    await _saveSetting('custom_leisure', jsonEncode(s.customLeisure));
+    await _saveSetting('custom_foods', jsonEncode(s.customFoods));
+    await _saveSetting('custom_sick_tags', jsonEncode(s.customSickTags));
+    await _saveSetting('custom_modules',
+        jsonEncode(s.customModules.map((m) => m.toJson()).toList()));
+    await _saveSetting('custom_module_questions',
+        jsonEncode(s.customModuleQuestions));
+    await _saveSetting('module_order', jsonEncode(s.moduleOrder));
     if (s.calendarStartDay != null) {
       await _saveSetting('calendar_start_day', s.calendarStartDay!);
     } else {

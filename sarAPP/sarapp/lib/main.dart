@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'providers/entries_provider.dart';
@@ -10,6 +11,12 @@ import 'services/notification_service.dart';
 void main() async {
   // Required before any async calls before runApp()
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Make the status bar transparent with dark icons (white background)
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.dark,
+  ));
 
   // Initialise notifications (sets up timezone + plugin)
   await NotificationService.init();
@@ -48,6 +55,7 @@ class SarApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF7C4DFF), // purple
         ),
+        scaffoldBackgroundColor: Colors.white,
         useMaterial3: true,
       ),
       home: settings.onboardingComplete

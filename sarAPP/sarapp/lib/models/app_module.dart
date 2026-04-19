@@ -47,11 +47,17 @@ class AppModule {
     description: 'Work day type (off / half / full)',
     emoji: '💼',
   );
-  static const activity = AppModule(
-    key: 'activity',
-    label: 'Physical activity',
-    description: 'Activity type selection',
+  static const sports = AppModule(
+    key: 'sports',
+    label: 'Sports',
+    description: 'Physical sport tracking',
     emoji: '🏃',
+  );
+  static const leisure = AppModule(
+    key: 'leisure',
+    label: 'Leisure activities',
+    description: 'Non-sport activity tracking (reading, gaming…)',
+    emoji: '🎲',
   );
   static const food = AppModule(
     key: 'food',
@@ -78,6 +84,24 @@ class AppModule {
     description: 'Free-text notes',
     emoji: '📝',
   );
+  static const libido = AppModule(
+    key: 'libido',
+    label: 'Libido',
+    description: 'Libido level (0 – 10)',
+    emoji: '🔥',
+  );
+  static const sex = AppModule(
+    key: 'sex',
+    label: 'Sex',
+    description: 'Had sex today?',
+    emoji: '💑',
+  );
+  static const water = AppModule(
+    key: 'water',
+    label: 'Water intake',
+    description: 'Glasses of water today (0 – 10)',
+    emoji: '💧',
+  );
 
   /// All modules in questionnaire display order.
   static const List<AppModule> all = [
@@ -87,13 +111,17 @@ class AppModule {
     weather,
     health,
     work,
-    activity,
+    sports,
+    leisure,
     food,
     symptoms,
     notes,
+    libido,
+    sex,
+    water,
   ];
 
-  /// Modules enabled by default (symptoms is opt-in).
+  /// Modules enabled by default (opt-in modules are excluded).
   static const Set<String> defaultEnabled = {
     'happiness',
     'emotions',
@@ -101,7 +129,8 @@ class AppModule {
     'weather',
     'health',
     'work',
-    'activity',
+    'sports',
+    'leisure',
     'food',
     'notes',
   };

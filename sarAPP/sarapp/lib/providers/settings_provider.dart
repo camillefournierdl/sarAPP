@@ -43,6 +43,15 @@ class SettingsProvider extends ChangeNotifier {
       enabledModules: _settings.enabledModules,
       calendarStartDay: _settings.calendarStartDay,
       showHighFertility: _settings.showHighFertility,
+      customEmotions: _settings.customEmotions,
+      customSymptoms: _settings.customSymptoms,
+      customSports: _settings.customSports,
+      customLeisure: _settings.customLeisure,
+      customFoods: _settings.customFoods,
+      customSickTags: _settings.customSickTags,
+      customModules: _settings.customModules,
+      customModuleQuestions: _settings.customModuleQuestions,
+      moduleOrder: _settings.moduleOrder,
     );
     await DatabaseService.saveSettings(_settings);
     notifyListeners();

@@ -212,7 +212,8 @@ class _CycleCalendarTabState extends State<_CycleCalendarTab> {
                 happinessScore: existing?.happinessScore,
                 sleepScore: existing?.sleepScore,
                 foods: existing?.foods ?? [],
-                activities: existing?.activities ?? [],
+                sports: existing?.sports ?? [],
+                leisure: existing?.leisure ?? [],
                 notes: existing?.notes ?? '',
               );
               await context.read<EntriesProvider>().saveEntry(updated);
@@ -578,7 +579,7 @@ class _InteractiveMoodLegend extends StatelessWidget {
         Wrap(
           spacing: 6,
           runSpacing: 4,
-          children: emotions.map((e) {
+          children: builtInEmotions.map((e) {
             final isSelected = selectedEmotion == e.value;
             return GestureDetector(
               onTap: () =>
