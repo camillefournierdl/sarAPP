@@ -19,10 +19,14 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setOnboardingComplete({bool menstruationTracking = true}) async {
+  Future<void> setOnboardingComplete({
+    required bool menstruationTracking,
+    required Set<String> enabledModules,
+  }) async {
     await update(_settings.copyWith(
       menstruationTracking: menstruationTracking,
       onboardingComplete: true,
+      enabledModules: enabledModules,
     ));
   }
 

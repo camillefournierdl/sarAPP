@@ -35,6 +35,8 @@ class DatabaseService {
             work_day         TEXT,
             foods            TEXT    NOT NULL DEFAULT '[]',
             activities       TEXT    NOT NULL DEFAULT '[]',
+            sports           TEXT    NOT NULL DEFAULT '[]',
+            leisure          TEXT    NOT NULL DEFAULT '[]',
             health_status    TEXT,
             sick_tags        TEXT    NOT NULL DEFAULT '[]',
             notes            TEXT    NOT NULL DEFAULT '',
@@ -107,8 +109,21 @@ class DatabaseService {
           await db.execute(
               'ALTER TABLE entries ADD COLUMN water_glasses INTEGER');
         }
+        // v9 → v10: fix fresh-install schema that was missing sports/leisure
+        if (oldVersion < 10) {
+          final cols = await db.rawQuery('PRAGMA table_info(entries)');
+          final existing = cols.map((c) => c['name'] as String).toSet();
+          if (!existing.contains('sports')) {
+            await db.execute(
+                "ALTER TABLE entries ADD COLUMN sports TEXT NOT NULL DEFAULT '[]'");
+          }
+          if (!existing.contains('leisure')) {
+            await db.execute(
+                "ALTER TABLE entries ADD COLUMN leisure TEXT NOT NULL DEFAULT '[]'");
+          }
+        }
       },
-      version: 9,
+      version: 10,
     );
   }
 
@@ -196,11 +211,18 @@ class DatabaseService {
   static List<String> _parseModuleOrder(String? raw) {
     const defaultOrder = [
       'happiness', 'emotions', 'sleep', 'weather',
-      'health', 'work', 'sports', 'leisure', 'food', 'symptoms', 'notes',
+      'health', 'work', 'sports', 'leisure', 'food', 'water',
+      'symptoms', 'libido', 'sex', 'notes',
     ];
     if (raw == null) return defaultOrder;
     try {
-      return List<String>.from(jsonDecode(raw) as List);
+      final saved = List<String>.from(jsonDecode(raw) as List);
+      // Append any known builtin keys that are missing from a saved order
+      // (handles upgrades where new modules were added after initial install).
+      for (final key in defaultOrder) {
+        if (!saved.contains(key)) saved.add(key);
+      }
+      return saved;
     } catch (_) {
       return defaultOrder;
     }

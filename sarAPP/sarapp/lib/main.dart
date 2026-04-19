@@ -18,12 +18,16 @@ void main() async {
     statusBarIconBrightness: Brightness.dark,
   ));
 
-  // Initialise notifications (sets up timezone + plugin)
-  await NotificationService.init();
-
-  // Load persisted data before the first frame
+  // Load settings first so we can pass the correct notification time to init
   final settingsProvider = SettingsProvider();
   await settingsProvider.load();
+
+  // Initialise notifications — passing the scheduled time so the cold-start
+  // date calculation uses the user's actual reminder time, not the default.
+  await NotificationService.init(
+    notificationHour: settingsProvider.settings.notificationHour,
+    notificationMinute: settingsProvider.settings.notificationMinute,
+  );
 
   final entriesProvider = EntriesProvider();
   await entriesProvider.load();
@@ -51,6 +55,7 @@ class SarApp extends StatelessWidget {
     return MaterialApp(
       title: 'sarAPP',
       debugShowCheckedModeBanner: false,
+      navigatorKey: NotificationService.navigatorKey,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF7C4DFF), // purple

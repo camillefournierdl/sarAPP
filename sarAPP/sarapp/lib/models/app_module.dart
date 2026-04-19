@@ -94,7 +94,7 @@ class AppModule {
     key: 'sex',
     label: 'Sex',
     description: 'Had sex today?',
-    emoji: '💑',
+    emoji: '❤️',
   );
   static const water = AppModule(
     key: 'water',
@@ -115,10 +115,10 @@ class AppModule {
     leisure,
     food,
     symptoms,
-    notes,
     libido,
     sex,
     water,
+    notes,
   ];
 
   /// Modules enabled by default (opt-in modules are excluded).

@@ -56,7 +56,8 @@ class AppSettings {
     this.customModuleQuestions = const {},
     this.moduleOrder = const [
       'happiness', 'emotions', 'sleep', 'weather',
-      'health', 'work', 'sports', 'leisure', 'food', 'symptoms', 'notes',
+      'health', 'work', 'sports', 'leisure', 'food', 'water',
+      'symptoms', 'libido', 'sex', 'notes',
     ],
   });
 

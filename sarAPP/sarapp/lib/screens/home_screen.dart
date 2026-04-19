@@ -5,6 +5,7 @@ import '../models/entry.dart';
 import '../providers/entries_provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/cycle_service.dart';
+import '../services/notification_service.dart';
 import '../widgets/cycle_phase_selector.dart';
 import '../widgets/emotion_tag_selector.dart';
 import 'calendar_screen.dart';
@@ -25,19 +26,22 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _openTodayIfNeeded());
+    // Handle cold-start notification tap: pendingLogDate was set before runApp
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final date = NotificationService.pendingLogDate;
+      if (date == null) return;
+      NotificationService.pendingLogDate = null;
+      _navigateToLogEntry(date);
+    });
   }
 
-  void _openTodayIfNeeded() {
-    if (!mounted) return;
-    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    final hasEntry =
-        context.read<EntriesProvider>().getByDate(today) != null;
-    if (!hasEntry) {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const LogEntryScreen()),
-      );
-    }
+  void _navigateToLogEntry(String date) {
+    final existing = context.read<EntriesProvider>().getByDate(date);
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => existing != null
+          ? LogEntryScreen(existing: existing)
+          : LogEntryScreen(date: date),
+    ));
   }
 
   static const _tabs = [
@@ -75,8 +79,11 @@ class _DashboardTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final yesterday = DateFormat('yyyy-MM-dd')
+        .format(DateTime.now().subtract(const Duration(days: 1)));
     final entries = context.watch<EntriesProvider>().entries;
     final todayEntry = context.watch<EntriesProvider>().getByDate(today);
+    final yesterdayEntry = context.watch<EntriesProvider>().getByDate(yesterday);
     final settings = context.watch<SettingsProvider>().settings;
     final isFemale = settings.isMenstruationTracking;
     final theme = Theme.of(context);
@@ -112,6 +119,12 @@ class _DashboardTab extends StatelessWidget {
               entries: entries),
 
         const SizedBox(height: 16),
+
+        // Yesterday catch-up prompt
+        if (yesterdayEntry == null) ...[
+          _CatchUpCard(date: yesterday),
+          const SizedBox(height: 8),
+        ],
 
         // Today's card
         Card(
@@ -259,6 +272,43 @@ class _CycleInfoCard extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CatchUpCard extends StatelessWidget {
+  final String date;
+  const _CatchUpCard({required this.date});
+
+  @override
+  Widget build(BuildContext context) {
+    final label = DateFormat('EEEE').format(DateTime.parse(date));
+    return Card(
+      color: Theme.of(context).colorScheme.secondaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            const Icon(Icons.history_edu),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text('No log for $label — want to catch up?'),
+            ),
+            TextButton(
+              onPressed: () {
+                final existing =
+                    context.read<EntriesProvider>().getByDate(date);
+                Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => existing != null
+                      ? LogEntryScreen(existing: existing)
+                      : LogEntryScreen(date: date),
+                ));
+              },
+              child: const Text('Log it'),
             ),
           ],
         ),
