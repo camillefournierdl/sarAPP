@@ -3,7 +3,12 @@
     "allow": [
       "Bash(cp:*)",
       "Bash(/mnt/c/Users/cfournier/work_files/side_phd/SARAPP/sarAPP/sarapp/pubspec.yaml:*)",
-      "Bash(/mnt/c/Users/cfournier/work_files/side_phd/SARAPP/sarAPP/sarapp/android/app/src/main/AndroidManifest.xml:*)"
+      "Bash(/mnt/c/Users/cfournier/work_files/side_phd/SARAPP/sarAPP/sarapp/android/app/src/main/AndroidManifest.xml:*)",
+      "Bash(flutter analyze:*)",
+      "Bash(/mnt/c/Users/cfournier/work_files/flutter/bin/dart analyze:*)",
+      "Read(//usr/bin/**)",
+      "Read(//home/**)",
+      "Bash(python3:*)"
     ]
   }
 }
