@@ -9,12 +9,11 @@ class CustomModule {
   final String question;
   final ResponseType responseType;
   final List<String> options;
-  /// For conditional type: which primary option reveals the follow-up.
   final String? conditionalTrigger;
-  /// For conditional type: the follow-up question label.
   final String? conditionalQuestion;
-  /// For conditional type: follow-up multi-select options.
   final List<String> conditionalOptions;
+  final String labelLow;
+  final String labelHigh;
 
   const CustomModule({
     required this.id,
@@ -26,6 +25,8 @@ class CustomModule {
     this.conditionalTrigger,
     this.conditionalQuestion,
     this.conditionalOptions = const [],
+    this.labelLow = '',
+    this.labelHigh = '',
   });
 
   factory CustomModule.create({
@@ -37,6 +38,8 @@ class CustomModule {
     String? conditionalTrigger,
     String? conditionalQuestion,
     List<String> conditionalOptions = const [],
+    String labelLow = '',
+    String labelHigh = '',
   }) =>
       CustomModule(
         id: _generateId(),
@@ -48,6 +51,8 @@ class CustomModule {
         conditionalTrigger: conditionalTrigger,
         conditionalQuestion: conditionalQuestion,
         conditionalOptions: conditionalOptions,
+        labelLow: labelLow,
+        labelHigh: labelHigh,
       );
 
   static String _generateId() {
@@ -68,6 +73,8 @@ class CustomModule {
         if (conditionalTrigger != null) 'conditionalTrigger': conditionalTrigger,
         if (conditionalQuestion != null) 'conditionalQuestion': conditionalQuestion,
         if (conditionalOptions.isNotEmpty) 'conditionalOptions': conditionalOptions,
+        if (labelLow.isNotEmpty) 'labelLow': labelLow,
+        if (labelHigh.isNotEmpty) 'labelHigh': labelHigh,
       };
 
   factory CustomModule.fromJson(Map<String, dynamic> j) => CustomModule(
@@ -80,5 +87,7 @@ class CustomModule {
         conditionalTrigger: j['conditionalTrigger'] as String?,
         conditionalQuestion: j['conditionalQuestion'] as String?,
         conditionalOptions: List<String>.from(j['conditionalOptions'] as List? ?? []),
+        labelLow: j['labelLow'] as String? ?? '',
+        labelHigh: j['labelHigh'] as String? ?? '',
       );
 }

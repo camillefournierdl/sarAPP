@@ -137,10 +137,12 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
         child = _HappinessSlider(
           value: _happinessScore,
           onChanged: (v) => setState(() => _happinessScore = v),
+          labelLow: settings.labelLowFor('happiness'),
+          labelHigh: settings.labelHighFor('happiness'),
         );
       case 'emotions':
         child = EmotionTagSelector(
-          options: settings.customEmotions,
+          options: settings.optionsFor('emotions'),
           selected: _emotions,
           onChanged: (v) => setState(() => _emotions = v),
         );
@@ -148,15 +150,15 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
         child = _HappinessSlider(
           value: _sleepScore,
           onChanged: (v) => setState(() => _sleepScore = v),
-          labelLow: '🪫',
-          labelHigh: '🔋',
+          labelLow: settings.labelLowFor('sleep'),
+          labelHigh: settings.labelHighFor('sleep'),
         );
       case 'weather':
         child = _HappinessSlider(
           value: _weatherScore,
           onChanged: (v) => setState(() => _weatherScore = v),
-          labelLow: '🌧️',
-          labelHigh: '☀️',
+          labelLow: settings.labelLowFor('weather'),
+          labelHigh: settings.labelHighFor('weather'),
         );
       case 'health':
         return [
@@ -176,7 +178,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
             _Section(
               title: 'What was wrong? (optional)',
               child: _ChipSelector(
-                options: settings.customSickTags,
+                options: settings.optionsFor('health'),
                 selected: _sickTags,
                 onChanged: (v) => setState(() => _sickTags = v),
               ),
@@ -191,25 +193,25 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
         );
       case 'sports':
         child = _ChipSelector(
-          options: settings.customSports,
+          options: settings.optionsFor('sports'),
           selected: _sports,
           onChanged: (v) => setState(() => _sports = v),
         );
       case 'leisure':
         child = _ChipSelector(
-          options: settings.customLeisure,
+          options: settings.optionsFor('leisure'),
           selected: _leisure,
           onChanged: (v) => setState(() => _leisure = v),
         );
       case 'food':
         child = _ChipSelector(
-          options: settings.customFoods,
+          options: settings.optionsFor('food'),
           selected: _foods,
           onChanged: (v) => setState(() => _foods = v),
         );
       case 'symptoms':
         child = SymptomSelector(
-          options: settings.customSymptoms,
+          options: settings.optionsFor('symptoms'),
           selected: _symptoms,
           onChanged: (v) => setState(() => _symptoms = v),
         );
@@ -226,8 +228,8 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
         child = _HappinessSlider(
           value: _libidoScore,
           onChanged: (v) => setState(() => _libidoScore = v),
-          labelLow: '💤',
-          labelHigh: '🔥',
+          labelLow: settings.labelLowFor('libido'),
+          labelHigh: settings.labelHighFor('libido'),
         );
       case 'sex':
         child = _SexSelector(
@@ -238,8 +240,8 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
         child = _HappinessSlider(
           value: _waterGlasses,
           onChanged: (v) => setState(() => _waterGlasses = v),
-          labelLow: '🚱',
-          labelHigh: '💧',
+          labelLow: settings.labelLowFor('water'),
+          labelHigh: settings.labelHighFor('water'),
         );
       default:
         return null;
@@ -261,6 +263,8 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
         return _HappinessSlider(
           value: val,
           onChanged: (v) => setState(() => _customData[m.id] = v),
+          labelLow: m.labelLow,
+          labelHigh: m.labelHigh,
         );
       case ResponseType.multiSelect:
         final selected = List<String>.from(_customData[m.id] as List? ?? []);
@@ -501,8 +505,8 @@ class _HappinessSlider extends StatelessWidget {
   const _HappinessSlider({
     required this.value,
     required this.onChanged,
-    this.labelLow = '0',
-    this.labelHigh = '10',
+    this.labelLow = '',
+    this.labelHigh = '',
   });
 
   @override
@@ -510,7 +514,7 @@ class _HappinessSlider extends StatelessWidget {
     final primary = Theme.of(context).colorScheme.primary;
     return Row(
       children: [
-        Text(labelLow, style: const TextStyle(fontSize: 16)),
+        if (labelLow.isNotEmpty) Text(labelLow, style: const TextStyle(fontSize: 16)),
         Expanded(
           child: Slider(
             value: (value ?? 5).toDouble(),
@@ -521,7 +525,7 @@ class _HappinessSlider extends StatelessWidget {
             onChanged: (v) => onChanged(v.round()),
           ),
         ),
-        Text(labelHigh, style: const TextStyle(fontSize: 16)),
+        if (labelHigh.isNotEmpty) Text(labelHigh, style: const TextStyle(fontSize: 16)),
         const SizedBox(width: 8),
         SizedBox(
           width: 36,

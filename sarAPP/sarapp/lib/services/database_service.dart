@@ -237,6 +237,25 @@ class DatabaseService {
     }
   }
 
+  static Map<String, List<String>> _parseModuleOptions(String? raw) {
+    if (raw == null) return const {};
+    try {
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      return decoded.map((k, v) => MapEntry(k, List<String>.from(v as List)));
+    } catch (_) {
+      return const {};
+    }
+  }
+
+  static Map<String, String> _parseStringMap(String? raw) {
+    if (raw == null) return const {};
+    try {
+      return Map<String, String>.from(jsonDecode(raw) as Map);
+    } catch (_) {
+      return const {};
+    }
+  }
+
   static Future<String?> _getSetting(String key) async {
     final db = await database;
     final rows =
@@ -245,6 +264,24 @@ class DatabaseService {
   }
 
   static Future<AppSettings> loadSettings() async {
+    // Migration: if module_options key absent, build it from old named keys (runs once).
+    final rawModuleOptions = await _getSetting('module_options');
+    Map<String, List<String>> moduleOptions;
+    if (rawModuleOptions != null) {
+      moduleOptions = _parseModuleOptions(rawModuleOptions);
+    } else {
+      moduleOptions = {
+        'emotions': _parseStringList(await _getSetting('custom_emotions'),   AppModule.emotions.defaultOptions),
+        'symptoms': _parseStringList(await _getSetting('custom_symptoms'),   AppModule.symptoms.defaultOptions),
+        'sports':   _parseStringList(await _getSetting('custom_sports'),     AppModule.sports.defaultOptions),
+        'leisure':  _parseStringList(await _getSetting('custom_leisure'),    AppModule.leisure.defaultOptions),
+        'food':     _parseStringList(await _getSetting('custom_foods'),      AppModule.food.defaultOptions),
+        'health':   _parseStringList(await _getSetting('custom_sick_tags'),  AppModule.health.defaultOptions),
+      };
+      await _saveSetting('module_options', jsonEncode(
+          moduleOptions.map((k, v) => MapEntry(k, v))));
+    }
+
     return AppSettings(
       menstruationTracking:
           (await _getSetting('menstruation_tracking') ?? 'true') == 'true',
@@ -263,24 +300,9 @@ class DatabaseService {
           (await _getSetting('show_high_fertility') ?? 'false') == 'true',
       showLastSex:
           (await _getSetting('show_last_sex') ?? 'false') == 'true',
-      customEmotions: _parseStringList(
-          await _getSetting('custom_emotions'),
-          const ['😊 Happy', '😢 Sad', '😤 Angry', '😰 Anxious', '😴 Tired', '⚡ Energized']),
-      customSymptoms: _parseStringList(
-          await _getSetting('custom_symptoms'),
-          const ['cramps', 'bloating', 'headache', 'fatigue', 'mood swings', 'breast tenderness', 'back pain', 'acne']),
-      customSports: _parseStringList(
-          await _getSetting('custom_sports'),
-          const ['🏋️ Weight lifting', '🏃 Intense cardio', '🚴 Endurance', '💃 Dance', '🧗 Climbing']),
-      customLeisure: _parseStringList(
-          await _getSetting('custom_leisure'),
-          const ['📖 Reading', '🌱 Gardening', '🎲 Board games', '🎮 Gaming']),
-      customFoods: _parseStringList(
-          await _getSetting('custom_foods'),
-          const ['🌾 Gluten', '🥛 Lactose', '🍬 Sugars', '🍗 Chicken', '🐟 Fish']),
-      customSickTags: _parseStringList(
-          await _getSetting('custom_sick_tags'),
-          const ['🤧 Cold', '🤒 Flu', '🤢 Nausea', '🤕 Headache', '🔥 Fever', '🫄 Digestive issues', '😮‍💨 Fatigue']),
+      moduleOptions: moduleOptions,
+      moduleLabelLow: _parseStringMap(await _getSetting('module_label_low')),
+      moduleLabelHigh: _parseStringMap(await _getSetting('module_label_high')),
       customModules: _parseCustomModules(await _getSetting('custom_modules')),
       customModuleQuestions: _parseQuestionOverrides(
           await _getSetting('custom_module_questions')),
@@ -298,12 +320,10 @@ class DatabaseService {
     await _saveSetting('enabled_modules', jsonEncode(s.enabledModules.toList()));
     await _saveSetting('show_high_fertility', s.showHighFertility.toString());
     await _saveSetting('show_last_sex', s.showLastSex.toString());
-    await _saveSetting('custom_emotions', jsonEncode(s.customEmotions));
-    await _saveSetting('custom_symptoms', jsonEncode(s.customSymptoms));
-    await _saveSetting('custom_sports', jsonEncode(s.customSports));
-    await _saveSetting('custom_leisure', jsonEncode(s.customLeisure));
-    await _saveSetting('custom_foods', jsonEncode(s.customFoods));
-    await _saveSetting('custom_sick_tags', jsonEncode(s.customSickTags));
+    await _saveSetting('module_options',
+        jsonEncode(s.moduleOptions.map((k, v) => MapEntry(k, v))));
+    await _saveSetting('module_label_low', jsonEncode(s.moduleLabelLow));
+    await _saveSetting('module_label_high', jsonEncode(s.moduleLabelHigh));
     await _saveSetting('custom_modules',
         jsonEncode(s.customModules.map((m) => m.toJson()).toList()));
     await _saveSetting('custom_module_questions',

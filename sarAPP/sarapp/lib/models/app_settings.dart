@@ -13,12 +13,12 @@ class AppSettings {
   final String? calendarStartDay;
   final bool showHighFertility;
   final bool showLastSex;
-  final List<String> customEmotions;
-  final List<String> customSymptoms;
-  final List<String> customSports;
-  final List<String> customLeisure;
-  final List<String> customFoods;
-  final List<String> customSickTags;
+  /// Options for each module, keyed by module key (built-ins) or id (custom).
+  final Map<String, List<String>> moduleOptions;
+  /// User overrides for scale slider low labels, keyed by module key/id.
+  final Map<String, String> moduleLabelLow;
+  /// User overrides for scale slider high labels, keyed by module key/id.
+  final Map<String, String> moduleLabelHigh;
   final List<CustomModule> customModules;
   final Map<String, String> customModuleQuestions;
   final List<String> moduleOrder;
@@ -36,24 +36,16 @@ class AppSettings {
     this.calendarStartDay,
     this.showHighFertility = false,
     this.showLastSex = false,
-    this.customEmotions = const [
-      '😊 Happy', '😢 Sad', '😤 Angry', '😰 Anxious', '😴 Tired', '⚡ Energized',
-    ],
-    this.customSymptoms = const [
-      'cramps', 'bloating', 'headache', 'fatigue', 'mood swings', 'breast tenderness', 'back pain', 'acne',
-    ],
-    this.customSports = const [
-      '🏋️ Weight lifting', '🏃 Intense cardio', '🚴 Endurance', '💃 Dance', '🧗 Climbing',
-    ],
-    this.customLeisure = const [
-      '📖 Reading', '🌱 Gardening', '🎲 Board games', '🎮 Gaming',
-    ],
-    this.customFoods = const [
-      '🌾 Gluten', '🥛 Lactose', '🍬 Sugars', '🍗 Chicken', '🐟 Fish',
-    ],
-    this.customSickTags = const [
-      '🤧 Cold', '🤒 Flu', '🤢 Nausea', '🤕 Headache', '🔥 Fever', '🫄 Digestive issues', '😮‍💨 Fatigue',
-    ],
+    this.moduleOptions = const {
+      'emotions': ['😊 Happy', '😢 Sad', '😤 Angry', '😰 Anxious', '😴 Tired', '⚡ Energized'],
+      'symptoms': ['cramps', 'bloating', 'headache', 'fatigue', 'mood swings', 'breast tenderness', 'back pain', 'acne'],
+      'sports':   ['🏋️ Weight lifting', '🏃 Intense cardio', '🚴 Endurance', '💃 Dance', '🧗 Climbing'],
+      'leisure':  ['📖 Reading', '🌱 Gardening', '🎲 Board games', '🎮 Gaming'],
+      'food':     ['🌾 Gluten', '🥛 Lactose', '🍬 Sugars', '🍗 Chicken', '🐟 Fish'],
+      'health':   ['🤧 Cold', '🤒 Flu', '🤢 Nausea', '🤕 Headache', '🔥 Fever', '🫄 Digestive issues', '😮‍💨 Fatigue'],
+    },
+    this.moduleLabelLow = const {},
+    this.moduleLabelHigh = const {},
     this.customModules = const [],
     this.customModuleQuestions = const {},
     this.moduleOrder = const [
@@ -67,6 +59,24 @@ class AppSettings {
 
   bool isModuleEnabled(String key) => enabledModules.contains(key);
 
+  /// Returns user-customized options for a module, falling back to AppModule defaults.
+  List<String> optionsFor(String key) =>
+      moduleOptions[key] ??
+      AppModule.all.where((m) => m.key == key).firstOrNull?.defaultOptions ??
+      const [];
+
+  /// Returns the effective low label for a scale module.
+  String labelLowFor(String key) =>
+      moduleLabelLow[key] ??
+      AppModule.all.where((m) => m.key == key).firstOrNull?.labelLow ??
+      '';
+
+  /// Returns the effective high label for a scale module.
+  String labelHighFor(String key) =>
+      moduleLabelHigh[key] ??
+      AppModule.all.where((m) => m.key == key).firstOrNull?.labelHigh ??
+      '';
+
   AppSettings copyWith({
     bool? menstruationTracking,
     int? notificationHour,
@@ -78,12 +88,9 @@ class AppSettings {
     Object? calendarStartDay = _sentinel,
     bool? showHighFertility,
     bool? showLastSex,
-    List<String>? customEmotions,
-    List<String>? customSymptoms,
-    List<String>? customSports,
-    List<String>? customLeisure,
-    List<String>? customFoods,
-    List<String>? customSickTags,
+    Map<String, List<String>>? moduleOptions,
+    Map<String, String>? moduleLabelLow,
+    Map<String, String>? moduleLabelHigh,
     List<CustomModule>? customModules,
     Map<String, String>? customModuleQuestions,
     List<String>? moduleOrder,
@@ -101,12 +108,9 @@ class AppSettings {
             : calendarStartDay as String?,
         showHighFertility: showHighFertility ?? this.showHighFertility,
         showLastSex: showLastSex ?? this.showLastSex,
-        customEmotions: customEmotions ?? this.customEmotions,
-        customSymptoms: customSymptoms ?? this.customSymptoms,
-        customSports: customSports ?? this.customSports,
-        customLeisure: customLeisure ?? this.customLeisure,
-        customFoods: customFoods ?? this.customFoods,
-        customSickTags: customSickTags ?? this.customSickTags,
+        moduleOptions: moduleOptions ?? this.moduleOptions,
+        moduleLabelLow: moduleLabelLow ?? this.moduleLabelLow,
+        moduleLabelHigh: moduleLabelHigh ?? this.moduleLabelHigh,
         customModules: customModules ?? this.customModules,
         customModuleQuestions: customModuleQuestions ?? this.customModuleQuestions,
         moduleOrder: moduleOrder ?? this.moduleOrder,

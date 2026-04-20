@@ -131,36 +131,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return ListView(
       children: [
-        // ── Cycle stats (female only) ─────────────────────────────────────
-        if (settings.isMenstruationTracking) ...[
-          const _Header('Cycle'),
-          _CycleStatsCard(entries: context.watch<EntriesProvider>().entries),
-          SwitchListTile(
-            secondary: const Icon(Icons.child_friendly_outlined),
-            title: const Text('Show higher-fertility window'),
-            subtitle: const Text(
-                'Highlights the ~5 days of elevated fertility around ovulation'),
-            value: settings.showHighFertility,
-            onChanged: (v) => context
-                .read<SettingsProvider>()
-                .update(settings.copyWith(
-                  showHighFertility: v,
-                  showLastSex: v ? settings.showLastSex : false,
-                )),
-          ),
-          if (settings.showHighFertility)
-            SwitchListTile(
-              secondary: const Icon(Icons.favorite_outline),
-              title: const Text('Show intimacy'),
-              subtitle: const Text(
-                  'Displays which days have been logged with intimacy (pink dot)'),
-              value: settings.showLastSex,
-              onChanged: (v) => context
-                  .read<SettingsProvider>()
-                  .update(settings.copyWith(showLastSex: v)),
-            ),
-        ],
-
         // ── Questionnaire modules ─────────────────────────────────────────
         const _Header('Questionnaire modules'),
         ListTile(
@@ -200,6 +170,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
           trailing: const Icon(Icons.chevron_right),
           onTap: () => _pickStartDay(settings),
         ),
+
+        // ── Cycle stats (female only) ─────────────────────────────────────
+        if (settings.isMenstruationTracking) ...[
+          const _Header('Cycle'),
+          _CycleStatsCard(entries: context.watch<EntriesProvider>().entries),
+          SwitchListTile(
+            secondary: const Icon(Icons.child_friendly_outlined),
+            title: const Text('Show higher-fertility window'),
+            subtitle: const Text(
+                'Highlights the ~5 days of elevated fertility around ovulation'),
+            value: settings.showHighFertility,
+            onChanged: (v) => context
+                .read<SettingsProvider>()
+                .update(settings.copyWith(
+                  showHighFertility: v,
+                  showLastSex: v ? settings.showLastSex : false,
+                )),
+          ),
+          if (settings.showHighFertility)
+            SwitchListTile(
+              secondary: const Icon(Icons.favorite_outline),
+              title: const Text('Show intimacy'),
+              subtitle: const Text(
+                  'A pink dot indicates tracked activity in the calendar'),
+              value: settings.showLastSex,
+              onChanged: (v) => context
+                  .read<SettingsProvider>()
+                  .update(settings.copyWith(showLastSex: v)),
+            ),
+        ],
 
         // ── Reminder ──────────────────────────────────────────────────────
         const _Header('Reminder'),
@@ -518,7 +518,7 @@ class ModulesScreen extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Drag to reorder. Tap ✏️ to customise.',
+                      'Drag (press long) to reorder. Tap ✏️ to customise.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: Theme.of(context)
                                 .colorScheme
@@ -668,14 +668,12 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
   late TextEditingController _conditionalTriggerCtrl;
   late TextEditingController _conditionalQuestionCtrl;
   late TextEditingController _conditionalOptionAddCtrl;
+  late TextEditingController _labelLowCtrl;
+  late TextEditingController _labelHighCtrl;
   late ResponseType _responseType;
   late List<String> _options;
   late List<String> _conditionalOptions;
   bool _isDirty = false;
-
-  static const _builtinOptionKeys = {
-    'emotions', 'symptoms', 'sports', 'leisure', 'food', 'health'
-  };
 
   @override
   void initState() {
@@ -698,11 +696,13 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
           text: settings.customModuleQuestions[_builtin!.key] ?? '');
       _nameCtrl = TextEditingController();
       _emojiCtrl = TextEditingController();
-      _responseType = ResponseType.scale;
-      _options = List.from(_getOptions(_builtin!.key, settings));
+      _responseType = _builtin!.responseType;
+      _options = List.from(settings.moduleOptions[_builtin!.key] ?? _builtin!.defaultOptions);
       _conditionalTriggerCtrl = TextEditingController();
       _conditionalQuestionCtrl = TextEditingController();
       _conditionalOptions = [];
+      _labelLowCtrl = TextEditingController(text: settings.labelLowFor(_builtin!.key));
+      _labelHighCtrl = TextEditingController(text: settings.labelHighFor(_builtin!.key));
     } else if (_custom != null) {
       _questionCtrl = TextEditingController(text: _custom!.question);
       _nameCtrl = TextEditingController(text: _custom!.name);
@@ -712,6 +712,8 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
       _conditionalTriggerCtrl = TextEditingController(text: _custom!.conditionalTrigger ?? '');
       _conditionalQuestionCtrl = TextEditingController(text: _custom!.conditionalQuestion ?? '');
       _conditionalOptions = List.from(_custom!.conditionalOptions);
+      _labelLowCtrl = TextEditingController(text: _custom!.labelLow);
+      _labelHighCtrl = TextEditingController(text: _custom!.labelHigh);
     } else {
       _questionCtrl = TextEditingController();
       _nameCtrl = TextEditingController();
@@ -721,6 +723,8 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
       _conditionalTriggerCtrl = TextEditingController();
       _conditionalQuestionCtrl = TextEditingController();
       _conditionalOptions = [];
+      _labelLowCtrl = TextEditingController();
+      _labelHighCtrl = TextEditingController();
     }
     _optionAddCtrl = TextEditingController();
     _conditionalOptionAddCtrl = TextEditingController();
@@ -728,6 +732,7 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
     for (final ctrl in [
       _questionCtrl, _nameCtrl, _emojiCtrl,
       _conditionalTriggerCtrl, _conditionalQuestionCtrl,
+      _labelLowCtrl, _labelHighCtrl,
     ]) {
       ctrl.addListener(_markDirty);
     }
@@ -746,36 +751,15 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
     _conditionalTriggerCtrl.dispose();
     _conditionalQuestionCtrl.dispose();
     _conditionalOptionAddCtrl.dispose();
+    _labelLowCtrl.dispose();
+    _labelHighCtrl.dispose();
     super.dispose();
   }
 
-  List<String> _getOptions(String key, AppSettings s) => switch (key) {
-        'emotions' => s.customEmotions,
-        'symptoms' => s.customSymptoms,
-        'sports' => s.customSports,
-        'leisure' => s.customLeisure,
-        'food' => s.customFoods,
-        'health' => s.customSickTags,
-        _ => const [],
-      };
-
-  AppSettings _setOptions(String key, List<String> opts, AppSettings s) =>
-      switch (key) {
-        'emotions' => s.copyWith(customEmotions: opts),
-        'symptoms' => s.copyWith(customSymptoms: opts),
-        'sports' => s.copyWith(customSports: opts),
-        'leisure' => s.copyWith(customLeisure: opts),
-        'food' => s.copyWith(customFoods: opts),
-        'health' => s.copyWith(customSickTags: opts),
-        _ => s,
-      };
-
-  bool get _hasOptionList {
-    if (_builtin != null) return _builtinOptionKeys.contains(_builtin!.key);
-    return _responseType == ResponseType.multiSelect ||
-        _responseType == ResponseType.singleSelect ||
-        _responseType == ResponseType.conditional;
-  }
+  bool get _hasOptionList =>
+      _responseType == ResponseType.multiSelect ||
+      _responseType == ResponseType.singleSelect ||
+      _responseType == ResponseType.conditional;
 
   void _addOption() {
     final v = _optionAddCtrl.text.trim();
@@ -810,7 +794,23 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
         questionMap[_builtin!.key] = question;
       }
       var updated = settings.copyWith(customModuleQuestions: questionMap);
-      if (_hasOptionList) updated = _setOptions(_builtin!.key, _options, updated);
+
+      if (_hasOptionList) {
+        final opts = Map<String, List<String>>.from(settings.moduleOptions);
+        opts[_builtin!.key] = List.from(_options);
+        updated = updated.copyWith(moduleOptions: opts);
+      }
+
+      if (_responseType == ResponseType.scale) {
+        final ll = _labelLowCtrl.text.trim();
+        final lh = _labelHighCtrl.text.trim();
+        final low = Map<String, String>.from(settings.moduleLabelLow);
+        final high = Map<String, String>.from(settings.moduleLabelHigh);
+        ll.isEmpty ? low.remove(_builtin!.key) : low[_builtin!.key] = ll;
+        lh.isEmpty ? high.remove(_builtin!.key) : high[_builtin!.key] = lh;
+        updated = updated.copyWith(moduleLabelLow: low, moduleLabelHigh: high);
+      }
+
       await context.read<SettingsProvider>().update(updated);
     } else if (_custom != null) {
       final name = _nameCtrl.text.trim();
@@ -828,6 +828,8 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
         conditionalTrigger: trigger.isEmpty ? null : trigger,
         conditionalQuestion: condQuestion.isEmpty ? null : condQuestion,
         conditionalOptions: List.from(_conditionalOptions),
+        labelLow: _labelLowCtrl.text.trim(),
+        labelHigh: _labelHighCtrl.text.trim(),
       );
       await context.read<SettingsProvider>().update(settings.copyWith(
             customModules: settings.customModules
@@ -849,6 +851,8 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
         conditionalTrigger: trigger.isEmpty ? null : trigger,
         conditionalQuestion: condQuestion.isEmpty ? null : condQuestion,
         conditionalOptions: List.from(_conditionalOptions),
+        labelLow: _labelLowCtrl.text.trim(),
+        labelHigh: _labelHighCtrl.text.trim(),
       );
       await context.read<SettingsProvider>().update(settings.copyWith(
             customModules: [...settings.customModules, newModule],
@@ -970,52 +974,86 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
             controller: _questionCtrl,
             decoration: InputDecoration(
               labelText: 'Question',
-              hintText: _builtin != null ? 'Leave blank to use default' : null,
+              hintText: _builtin != null ? _builtin!.description : null,
+              helperText: _builtin != null ? 'Leave blank to use the default above' : null,
               border: const OutlineInputBorder(),
             ),
             maxLines: 2,
           ),
           const SizedBox(height: 16),
-          if (_builtin == null) ...[
-            Text('Response type', style: theme.textTheme.labelLarge),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: ResponseType.values.map((rt) {
-                final label = switch (rt) {
-                  ResponseType.scale => '0–10 Scale',
-                  ResponseType.multiSelect => 'Multi-select',
-                  ResponseType.singleSelect => 'Single-select',
-                  ResponseType.text => 'Free text',
-                  ResponseType.conditional => 'Conditional',
-                };
-                return ChoiceChip(
-                  label: Text(label),
-                  selected: _responseType == rt,
-                  onSelected: (_) => setState(() {
-                    _responseType = rt;
-                    _isDirty = true;
-                    if (rt != ResponseType.multiSelect &&
-                        rt != ResponseType.singleSelect &&
-                        rt != ResponseType.conditional) {
-                      _options.clear();
-                    }
-                    if (rt != ResponseType.conditional) {
-                      _conditionalOptions.clear();
-                    }
-                  }),
-                );
-              }).toList(),
-            ),
+          Text('Response type', style: theme.textTheme.labelLarge),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: ResponseType.values.map((rt) {
+              final label = switch (rt) {
+                ResponseType.scale => '0–10 Scale',
+                ResponseType.multiSelect => 'Multi-select',
+                ResponseType.singleSelect => 'Single-select',
+                ResponseType.text => 'Free text',
+                ResponseType.conditional => 'Conditional',
+              };
+              if (_builtin != null) {
+                return rt == _responseType
+                    ? Chip(label: Text(label))
+                    : const SizedBox.shrink();
+              }
+              return ChoiceChip(
+                label: Text(label),
+                selected: _responseType == rt,
+                onSelected: (_) => setState(() {
+                  _responseType = rt;
+                  _isDirty = true;
+                  if (rt != ResponseType.multiSelect &&
+                      rt != ResponseType.singleSelect &&
+                      rt != ResponseType.conditional) {
+                    _options.clear();
+                  }
+                  if (rt != ResponseType.conditional) {
+                    _conditionalOptions.clear();
+                  }
+                }),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 16),
+          if (_responseType == ResponseType.scale) ...[
+            Row(children: [
+              Expanded(
+                child: TextField(
+                  controller: _labelLowCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Low label',
+                    hintText: _builtin?.labelLow.isNotEmpty == true
+                        ? _builtin!.labelLow
+                        : '0',
+                    helperText: 'Emoji or text for the low end',
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _labelHighCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'High label',
+                    hintText: _builtin?.labelHigh.isNotEmpty == true
+                        ? _builtin!.labelHigh
+                        : '10',
+                    helperText: 'Emoji or text for the high end',
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+              ),
+            ]),
             const SizedBox(height: 16),
           ],
           if (_hasOptionList) ...[
             Text(
-              _builtin != null
-                  ? 'Options'
-                  : _responseType == ResponseType.conditional
-                      ? 'Primary options'
-                      : 'Answer options',
+              _responseType == ResponseType.conditional
+                  ? 'Primary options'
+                  : 'Answer options',
               style: theme.textTheme.labelLarge,
             ),
             const SizedBox(height: 8),
@@ -1029,7 +1067,7 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
                 )),
             _AddItemRow(
               controller: _optionAddCtrl,
-              hint: 'Add an option',
+              hint: 'e.g. 😊 Happy',
               onAdd: _addOption,
             ),
             const SizedBox(height: 16),
@@ -1153,7 +1191,7 @@ class AboutScreen extends StatelessWidget {
                     style: theme.textTheme.headlineSmall
                         ?.copyWith(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
-                Text('v0.1 · Free & open-source',
+                Text('v0.1 · Free, open-source, and made with ❤️',
                     style:
                         theme.textTheme.bodySmall?.copyWith(color: outline)),
               ],
@@ -1166,7 +1204,7 @@ class AboutScreen extends StatelessWidget {
             icon: Icons.tune,
             title: 'Track what you choose',
             body:
-                'sarAPP lets you track different dimensions of your day. ' 
+                'sarAPP lets you track different dimensions of your day. Everyone is different.' 
                 'You decide what dimensions matter to you. Enable or '
                 'disable any module at any time in Settings. '
                 'There is no required field.',
@@ -1178,7 +1216,7 @@ class AboutScreen extends StatelessWidget {
             body:
                 'Everything you log stays on your phone. No account, no cloud '
                 'sync, (currenty) no analytics. Your data is stored locally in a private '
-                'database and can be exported to CSV whenever you want.',
+                'database and can be exported to a CSV whenever you want.',
           ),
           const SizedBox(height: 20),
           _AboutSection(
@@ -1193,7 +1231,7 @@ class AboutScreen extends StatelessWidget {
 
           Center(
             child: Text(
-              'Data stays on your device — always.',
+              'Data always stays on your device.',
               style: theme.textTheme.bodySmall?.copyWith(color: outline),
               textAlign: TextAlign.center,
             ),
