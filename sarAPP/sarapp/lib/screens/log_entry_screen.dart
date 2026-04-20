@@ -29,6 +29,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
   late List<String> _symptoms;
   int? _happinessScore;
   int? _sleepScore;
+  int? _stressScore;
   int? _weatherScore;
   String? _workDay;
   late List<String> _foods;
@@ -60,6 +61,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
     _symptoms = List.from(e?.symptoms ?? []);
     _happinessScore = e?.happinessScore;
     _sleepScore = e?.sleepScore;
+    _stressScore = e?.stressScore;
     _weatherScore = e?.weatherScore;
     _workDay = e?.workDay;
     _foods = List.from(e?.foods ?? []);
@@ -107,6 +109,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
       symptoms: _symptoms,
       happinessScore: _happinessScore,
       sleepScore: _sleepScore,
+      stressScore: _stressScore,
       weatherScore: _weatherScore,
       workDay: _workDay,
       foods: _foods,
@@ -153,6 +156,13 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
           labelLow: settings.labelLowFor('sleep'),
           labelHigh: settings.labelHighFor('sleep'),
         );
+      case 'stress':
+        child = _HappinessSlider(
+          value: _stressScore,
+          onChanged: (v) => setState(() => _stressScore = v),
+          labelLow: settings.labelLowFor('stress'),
+          labelHigh: settings.labelHighFor('stress'),
+        );
       case 'weather':
         child = _HappinessSlider(
           value: _weatherScore,
@@ -161,24 +171,32 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
           labelHigh: settings.labelHighFor('weather'),
         );
       case 'health':
+        final primaryOpts = settings.optionsFor('health');
+        final trigger = settings.conditionalTriggerFor('health');
+        final followupQ = settings.conditionalQuestionFor('health');
+        final followupOpts = settings.conditionalOptionsFor('health');
         return [
           _Section(
-            title: settings.questionFor(
-                'health', 'How did you feel physically today?'),
-            child: _HealthStatusSelector(
-              value: _healthStatus,
-              onChanged: (v) => setState(() {
-                _healthStatus = v;
-                if (v == 'healthy') _sickTags = [];
-              }),
+            title: settings.questionFor('health', m.description),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: primaryOpts.map((opt) => ChoiceChip(
+                label: Text(opt),
+                selected: _healthStatus == opt,
+                onSelected: (on) => setState(() {
+                  _healthStatus = on ? opt : null;
+                  if (_healthStatus != trigger) _sickTags = [];
+                }),
+              )).toList(),
             ),
           ),
-          if (_healthStatus == 'sick') ...[
+          if (_healthStatus == trigger && followupOpts.isNotEmpty) ...[
             const SizedBox(height: 16),
             _Section(
-              title: 'What was wrong? (optional)',
+              title: followupQ.isNotEmpty ? followupQ : 'Follow-up',
               child: _ChipSelector(
-                options: settings.optionsFor('health'),
+                options: followupOpts,
                 selected: _sickTags,
                 onChanged: (v) => setState(() => _sickTags = v),
               ),
@@ -187,9 +205,15 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
           const SizedBox(height: 16),
         ];
       case 'work':
-        child = _WorkDaySelector(
-          value: _workDay,
-          onChanged: (v) => setState(() => _workDay = v),
+        final workOpts = settings.optionsFor('work');
+        child = Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: workOpts.map((opt) => ChoiceChip(
+            label: Text(opt),
+            selected: _workDay == opt,
+            onSelected: (on) => setState(() => _workDay = on ? opt : null),
+          )).toList(),
         );
       case 'sports':
         child = _ChipSelector(
@@ -232,9 +256,15 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
           labelHigh: settings.labelHighFor('libido'),
         );
       case 'sex':
-        child = _SexSelector(
-          value: _hadSex,
-          onChanged: (v) => setState(() => _hadSex = v),
+        final sexOpts = settings.optionsFor('sex');
+        child = Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: sexOpts.map((opt) => ChoiceChip(
+            label: Text(opt),
+            selected: _hadSex == opt,
+            onSelected: (on) => setState(() => _hadSex = on ? opt : null),
+          )).toList(),
         );
       case 'water':
         child = _HappinessSlider(
@@ -580,72 +610,6 @@ class _ChipSelector extends StatelessWidget {
   }
 }
 
-// ── Health status selector ────────────────────────────────────────────────────
-
-class _HealthStatusSelector extends StatelessWidget {
-  final String? value;
-  final ValueChanged<String?> onChanged;
-
-  const _HealthStatusSelector({required this.value, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return SegmentedButton<String>(
-      segments: const [
-        ButtonSegment(value: 'healthy', label: Text('Healthy'), icon: Text('💪')),
-        ButtonSegment(value: 'sick', label: Text('Sick'), icon: Text('🤒')),
-      ],
-      selected: value != null ? {value!} : {},
-      emptySelectionAllowed: true,
-      onSelectionChanged: (sel) => onChanged(sel.isEmpty ? null : sel.first),
-    );
-  }
-}
-
-// ── Sex selector ─────────────────────────────────────────────────────────────
-
-class _SexSelector extends StatelessWidget {
-  final String? value;
-  final ValueChanged<String?> onChanged;
-
-  const _SexSelector({required this.value, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return SegmentedButton<String>(
-      segments: const [
-        ButtonSegment(value: 'yes', label: Text('Yes'), icon: Text('🍃')),
-        ButtonSegment(value: 'no', label: Text('No'), icon: Text('🪹')),
-      ],
-      selected: value != null ? {value!} : {},
-      emptySelectionAllowed: true,
-      onSelectionChanged: (sel) => onChanged(sel.isEmpty ? null : sel.first),
-    );
-  }
-}
-
-// ── Work day selector ─────────────────────────────────────────────────────────
-
-class _WorkDaySelector extends StatelessWidget {
-  final String? value;
-  final ValueChanged<String?> onChanged;
-
-  const _WorkDaySelector({required this.value, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return SegmentedButton<String>(
-      segments: const [
-        ButtonSegment(value: 'off', label: Text('Day off'), icon: Text('🌿')),
-        ButtonSegment(value: 'half', label: Text('Half day'), icon: Text('🌗')),
-        ButtonSegment(value: 'full', label: Text('Full day'), icon: Text('💼')),
-      ],
-      selected: value != null ? {value!} : {},
-      emptySelectionAllowed: true,
-      onSelectionChanged: (sel) => onChanged(sel.isEmpty ? null : sel.first),
-    );
-  }
-}
 
 class _Section extends StatelessWidget {
   final String title;

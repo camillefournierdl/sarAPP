@@ -11,6 +11,12 @@ class AppModule {
   final List<String> defaultOptions;
   final String labelLow;
   final String labelHigh;
+  /// For conditional modules: the primary option value that reveals the follow-up.
+  final String conditionalTrigger;
+  /// For conditional modules: the follow-up question label.
+  final String conditionalQuestion;
+  /// For conditional modules: the default follow-up options.
+  final List<String> conditionalDefaultOptions;
 
   const AppModule({
     required this.key,
@@ -22,6 +28,9 @@ class AppModule {
     this.defaultOptions = const [],
     this.labelLow = '',
     this.labelHigh = '',
+    this.conditionalTrigger = '',
+    this.conditionalQuestion = '',
+    this.conditionalDefaultOptions = const [],
   });
 
   // ── Registry — add new modules here ──────────────────────────────────────
@@ -36,7 +45,7 @@ class AppModule {
   static const emotions = AppModule(
     key: 'emotions',
     label: 'Emotions',
-    description: 'Emotion tag selection',
+    description: 'How did you feel today?',
     emoji: '🎭',
     responseType: ResponseType.multiSelect,
     defaultOptions: [
@@ -52,6 +61,15 @@ class AppModule {
     labelLow: '🪫',
     labelHigh: '🔋',
   );
+  static const stress = AppModule(
+    key: 'stress',
+    label: 'Stress',
+    description: 'Stress level (0 – 10)',
+    emoji: '🧘',
+    responseType: ResponseType.scale,
+    labelLow: '😌',
+    labelHigh: '😤',
+  );
   static const weather = AppModule(
     key: 'weather',
     label: 'Weather',
@@ -64,9 +82,10 @@ class AppModule {
   static const work = AppModule(
     key: 'work',
     label: 'Work',
-    description: 'Work day type (off / half / full)',
+    description: 'Work day type',
     emoji: '💼',
     responseType: ResponseType.singleSelect,
+    defaultOptions: ['🌿 Day off', '🌗 Half day', '💼 Full day'],
   );
   static const sports = AppModule(
     key: 'sports',
@@ -81,8 +100,8 @@ class AppModule {
   static const leisure = AppModule(
     key: 'leisure',
     label: 'Leisure activities',
-    description: 'Other activity tracking (reading, gardening…)',
-    emoji: '🎲',
+    description: 'Other activity tracking',
+    emoji: '♟️',
     responseType: ResponseType.multiSelect,
     defaultOptions: [
       '📖 Reading', '🌱 Gardening', '🎲 Board games', '🎮 Gaming',
@@ -101,7 +120,7 @@ class AppModule {
   static const symptoms = AppModule(
     key: 'symptoms',
     label: 'Symptoms',
-    description: 'Physical symptom tracking',
+    description: 'Chronic symptom tracking',
     emoji: '🩺',
     menstruationOnly: true,
     responseType: ResponseType.multiSelect,
@@ -113,10 +132,13 @@ class AppModule {
   static const health = AppModule(
     key: 'health',
     label: 'Health',
-    description: 'General health status (healthy / sick)',
+    description: 'How did you feel physically today?',
     emoji: '🤒',
-    responseType: ResponseType.multiSelect,
-    defaultOptions: [
+    responseType: ResponseType.conditional,
+    defaultOptions: ['Healthy', 'Sick'],
+    conditionalTrigger: 'Sick',
+    conditionalQuestion: 'What was wrong? (optional)',
+    conditionalDefaultOptions: [
       '🤧 Cold', '🤒 Flu', '🤢 Nausea', '🤕 Headache', '🔥 Fever',
       '🫄 Digestive issues', '😮‍💨 Fatigue',
     ],
@@ -143,6 +165,7 @@ class AppModule {
     description: 'Had sex today?',
     emoji: '❤️',
     responseType: ResponseType.singleSelect,
+    defaultOptions: ['Yes', 'No'],
   );
   static const water = AppModule(
     key: 'water',
@@ -159,6 +182,7 @@ class AppModule {
     happiness,
     emotions,
     sleep,
+    stress,
     weather,
     health,
     work,
@@ -177,6 +201,7 @@ class AppModule {
     'happiness',
     'emotions',
     'sleep',
+    'stress',
     'weather',
     'health',
     'work',

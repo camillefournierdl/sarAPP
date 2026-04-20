@@ -693,14 +693,16 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
 
     if (_builtin != null) {
       _questionCtrl = TextEditingController(
-          text: settings.customModuleQuestions[_builtin!.key] ?? '');
+          text: settings.customModuleQuestions[_builtin!.key] ?? _builtin!.description);
       _nameCtrl = TextEditingController();
       _emojiCtrl = TextEditingController();
       _responseType = _builtin!.responseType;
       _options = List.from(settings.moduleOptions[_builtin!.key] ?? _builtin!.defaultOptions);
-      _conditionalTriggerCtrl = TextEditingController();
-      _conditionalQuestionCtrl = TextEditingController();
-      _conditionalOptions = [];
+      _conditionalTriggerCtrl = TextEditingController(
+          text: settings.conditionalTriggerFor(_builtin!.key));
+      _conditionalQuestionCtrl = TextEditingController(
+          text: settings.conditionalQuestionFor(_builtin!.key));
+      _conditionalOptions = List.from(settings.conditionalOptionsFor(_builtin!.key));
       _labelLowCtrl = TextEditingController(text: settings.labelLowFor(_builtin!.key));
       _labelHighCtrl = TextEditingController(text: settings.labelHighFor(_builtin!.key));
     } else if (_custom != null) {
@@ -788,7 +790,7 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
       final question = _questionCtrl.text.trim();
       final questionMap =
           Map<String, String>.from(settings.customModuleQuestions);
-      if (question.isEmpty) {
+      if (question.isEmpty || question == _builtin!.description) {
         questionMap.remove(_builtin!.key);
       } else {
         questionMap[_builtin!.key] = question;
@@ -806,9 +808,30 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
         final lh = _labelHighCtrl.text.trim();
         final low = Map<String, String>.from(settings.moduleLabelLow);
         final high = Map<String, String>.from(settings.moduleLabelHigh);
-        ll.isEmpty ? low.remove(_builtin!.key) : low[_builtin!.key] = ll;
-        lh.isEmpty ? high.remove(_builtin!.key) : high[_builtin!.key] = lh;
+        (ll.isEmpty || ll == _builtin!.labelLow) ? low.remove(_builtin!.key) : low[_builtin!.key] = ll;
+        (lh.isEmpty || lh == _builtin!.labelHigh) ? high.remove(_builtin!.key) : high[_builtin!.key] = lh;
         updated = updated.copyWith(moduleLabelLow: low, moduleLabelHigh: high);
+      }
+
+      if (_responseType == ResponseType.conditional) {
+        final trigger = _conditionalTriggerCtrl.text.trim();
+        final condQ = _conditionalQuestionCtrl.text.trim();
+
+        final condOpts = Map<String, List<String>>.from(settings.moduleConditionalOptions);
+        condOpts[_builtin!.key] = List.from(_conditionalOptions);
+        updated = updated.copyWith(moduleConditionalOptions: condOpts);
+
+        final triggers = Map<String, String>.from(settings.moduleConditionalTrigger);
+        (trigger.isEmpty || trigger == _builtin!.conditionalTrigger)
+            ? triggers.remove(_builtin!.key)
+            : triggers[_builtin!.key] = trigger;
+        updated = updated.copyWith(moduleConditionalTrigger: triggers);
+
+        final condQs = Map<String, String>.from(settings.moduleConditionalQuestion);
+        (condQ.isEmpty || condQ == _builtin!.conditionalQuestion)
+            ? condQs.remove(_builtin!.key)
+            : condQs[_builtin!.key] = condQ;
+        updated = updated.copyWith(moduleConditionalQuestion: condQs);
       }
 
       await context.read<SettingsProvider>().update(updated);
@@ -974,8 +997,7 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
             controller: _questionCtrl,
             decoration: InputDecoration(
               labelText: 'Question',
-              hintText: _builtin != null ? _builtin!.description : null,
-              helperText: _builtin != null ? 'Leave blank to use the default above' : null,
+              helperText: _builtin != null ? 'Clear to restore default' : null,
               border: const OutlineInputBorder(),
             ),
             maxLines: 2,
@@ -1072,7 +1094,7 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
             ),
             const SizedBox(height: 16),
           ],
-          if (_builtin == null && _responseType == ResponseType.conditional) ...[
+          if (_responseType == ResponseType.conditional) ...[
             TextField(
               controller: _conditionalTriggerCtrl,
               decoration: const InputDecoration(

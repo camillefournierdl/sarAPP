@@ -10,6 +10,7 @@ class Entry {
   final List<String> symptoms;
   final int? happinessScore; // 0–10, null = not answered
   final int? sleepScore;     // 0–10, null = not answered
+  final int? stressScore;    // 0–10, null = not answered
   final int? weatherScore;   // 0–10, null = not answered
   final String? workDay;     // 'off' | 'half' | 'full' | null = not answered
   final List<String> foods; // e.g. ['gluten', 'lactose']
@@ -34,6 +35,7 @@ class Entry {
     this.symptoms = const [],
     this.happinessScore,
     this.sleepScore,
+    this.stressScore,
     this.weatherScore,
     this.workDay,
     this.foods = const [],
@@ -58,6 +60,7 @@ class Entry {
     List<String> symptoms = const [],
     int? happinessScore,
     int? sleepScore,
+    int? stressScore,
     int? weatherScore,
     String? workDay,
     List<String> foods = const [],
@@ -80,6 +83,7 @@ class Entry {
         symptoms: symptoms,
         happinessScore: happinessScore,
         sleepScore: sleepScore,
+        stressScore: stressScore,
         weatherScore: weatherScore,
         workDay: workDay,
         foods: foods,
@@ -105,6 +109,7 @@ class Entry {
         'symptoms': jsonEncode(symptoms),
         'happiness_score': happinessScore,
         'sleep_score': sleepScore,
+        'stress_score': stressScore,
         'weather_score': weatherScore,
         'work_day': workDay,
         'foods': jsonEncode(foods),
@@ -132,6 +137,7 @@ class Entry {
             jsonDecode(map['symptoms'] as String? ?? '[]')),
         happinessScore: map['happiness_score'] as int?,
         sleepScore: map['sleep_score'] as int?,
+        stressScore: map['stress_score'] as int?,
         weatherScore: map['weather_score'] as int?,
         workDay: map['work_day'] as String?,
         foods: List<String>.from(
@@ -157,6 +163,7 @@ class Entry {
       emotions.isNotEmpty ||
       happinessScore != null ||
       sleepScore != null ||
+      stressScore != null ||
       weatherScore != null ||
       workDay != null ||
       sports.isNotEmpty ||

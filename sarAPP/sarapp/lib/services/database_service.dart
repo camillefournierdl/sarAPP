@@ -31,6 +31,7 @@ class DatabaseService {
             symptoms         TEXT    NOT NULL DEFAULT '[]',
             happiness_score  INTEGER,
             sleep_score      INTEGER,
+            stress_score     INTEGER,
             weather_score    INTEGER,
             work_day         TEXT,
             foods            TEXT    NOT NULL DEFAULT '[]',
@@ -122,8 +123,13 @@ class DatabaseService {
                 "ALTER TABLE entries ADD COLUMN leisure TEXT NOT NULL DEFAULT '[]'");
           }
         }
+        // v10 → v11: add stress_score column
+        if (oldVersion < 11) {
+          await db.execute(
+              'ALTER TABLE entries ADD COLUMN stress_score INTEGER');
+        }
       },
-      version: 10,
+      version: 11,
     );
   }
 
@@ -210,7 +216,7 @@ class DatabaseService {
 
   static List<String> _parseModuleOrder(String? raw) {
     const defaultOrder = [
-      'happiness', 'emotions', 'sleep', 'weather',
+      'happiness', 'emotions', 'sleep', 'stress', 'weather',
       'health', 'work', 'sports', 'leisure', 'food', 'water',
       'symptoms', 'libido', 'sex', 'notes',
     ];
@@ -276,10 +282,34 @@ class DatabaseService {
         'sports':   _parseStringList(await _getSetting('custom_sports'),     AppModule.sports.defaultOptions),
         'leisure':  _parseStringList(await _getSetting('custom_leisure'),    AppModule.leisure.defaultOptions),
         'food':     _parseStringList(await _getSetting('custom_foods'),      AppModule.food.defaultOptions),
-        'health':   _parseStringList(await _getSetting('custom_sick_tags'),  AppModule.health.defaultOptions),
+        // 'health' intentionally excluded: sick tags move to module_conditional_options
       };
       await _saveSetting('module_options', jsonEncode(
           moduleOptions.map((k, v) => MapEntry(k, v))));
+    }
+
+    // Migration: if module_conditional_options absent, migrate health sick tags from
+    // module_options (old format stored them there) or old custom_sick_tags key.
+    final rawCondOptions = await _getSetting('module_conditional_options');
+    Map<String, List<String>> moduleConditionalOptions;
+    if (rawCondOptions != null) {
+      moduleConditionalOptions = _parseModuleOptions(rawCondOptions);
+    } else {
+      moduleConditionalOptions = {};
+      if (moduleOptions.containsKey('health')) {
+        // Old data: health entry in moduleOptions = sick tags → move to conditional
+        moduleConditionalOptions['health'] = moduleOptions['health']!;
+        moduleOptions = Map.from(moduleOptions)..remove('health');
+        await _saveSetting('module_options', jsonEncode(moduleOptions));
+      } else {
+        // No customized sick tags; fall back to default via raw key
+        final oldSickTags = await _getSetting('custom_sick_tags');
+        if (oldSickTags != null) {
+          moduleConditionalOptions['health'] =
+              _parseStringList(oldSickTags, AppModule.health.conditionalDefaultOptions);
+        }
+      }
+      await _saveSetting('module_conditional_options', jsonEncode(moduleConditionalOptions));
     }
 
     return AppSettings(
@@ -303,6 +333,9 @@ class DatabaseService {
       moduleOptions: moduleOptions,
       moduleLabelLow: _parseStringMap(await _getSetting('module_label_low')),
       moduleLabelHigh: _parseStringMap(await _getSetting('module_label_high')),
+      moduleConditionalOptions: moduleConditionalOptions,
+      moduleConditionalTrigger: _parseStringMap(await _getSetting('module_conditional_trigger')),
+      moduleConditionalQuestion: _parseStringMap(await _getSetting('module_conditional_question')),
       customModules: _parseCustomModules(await _getSetting('custom_modules')),
       customModuleQuestions: _parseQuestionOverrides(
           await _getSetting('custom_module_questions')),
@@ -324,6 +357,10 @@ class DatabaseService {
         jsonEncode(s.moduleOptions.map((k, v) => MapEntry(k, v))));
     await _saveSetting('module_label_low', jsonEncode(s.moduleLabelLow));
     await _saveSetting('module_label_high', jsonEncode(s.moduleLabelHigh));
+    await _saveSetting('module_conditional_options',
+        jsonEncode(s.moduleConditionalOptions.map((k, v) => MapEntry(k, v))));
+    await _saveSetting('module_conditional_trigger', jsonEncode(s.moduleConditionalTrigger));
+    await _saveSetting('module_conditional_question', jsonEncode(s.moduleConditionalQuestion));
     await _saveSetting('custom_modules',
         jsonEncode(s.customModules.map((m) => m.toJson()).toList()));
     await _saveSetting('custom_module_questions',

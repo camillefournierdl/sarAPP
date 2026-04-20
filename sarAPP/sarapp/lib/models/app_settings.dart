@@ -19,6 +19,12 @@ class AppSettings {
   final Map<String, String> moduleLabelLow;
   /// User overrides for scale slider high labels, keyed by module key/id.
   final Map<String, String> moduleLabelHigh;
+  /// Follow-up options for conditional modules (built-ins keyed by module key).
+  final Map<String, List<String>> moduleConditionalOptions;
+  /// Trigger option value for conditional modules (built-ins keyed by module key).
+  final Map<String, String> moduleConditionalTrigger;
+  /// Follow-up question label for conditional modules (built-ins keyed by module key).
+  final Map<String, String> moduleConditionalQuestion;
   final List<CustomModule> customModules;
   final Map<String, String> customModuleQuestions;
   final List<String> moduleOrder;
@@ -42,14 +48,18 @@ class AppSettings {
       'sports':   ['🏋️ Weight lifting', '🏃 Intense cardio', '🚴 Endurance', '💃 Dance', '🧗 Climbing'],
       'leisure':  ['📖 Reading', '🌱 Gardening', '🎲 Board games', '🎮 Gaming'],
       'food':     ['🌾 Gluten', '🥛 Lactose', '🍬 Sugars', '🍗 Chicken', '🐟 Fish'],
-      'health':   ['🤧 Cold', '🤒 Flu', '🤢 Nausea', '🤕 Headache', '🔥 Fever', '🫄 Digestive issues', '😮‍💨 Fatigue'],
     },
     this.moduleLabelLow = const {},
     this.moduleLabelHigh = const {},
+    this.moduleConditionalOptions = const {
+      'health': ['🤧 Cold', '🤒 Flu', '🤢 Nausea', '🤕 Headache', '🔥 Fever', '🫄 Digestive issues', '😮‍💨 Fatigue'],
+    },
+    this.moduleConditionalTrigger = const {},
+    this.moduleConditionalQuestion = const {},
     this.customModules = const [],
     this.customModuleQuestions = const {},
     this.moduleOrder = const [
-      'happiness', 'emotions', 'sleep', 'weather',
+      'happiness', 'emotions', 'sleep', 'stress', 'weather',
       'health', 'work', 'sports', 'leisure', 'food', 'water',
       'symptoms', 'libido', 'sex', 'notes',
     ],
@@ -77,6 +87,24 @@ class AppSettings {
       AppModule.all.where((m) => m.key == key).firstOrNull?.labelHigh ??
       '';
 
+  /// Returns user-customized follow-up options for a conditional module.
+  List<String> conditionalOptionsFor(String key) =>
+      moduleConditionalOptions[key] ??
+      AppModule.all.where((m) => m.key == key).firstOrNull?.conditionalDefaultOptions ??
+      const [];
+
+  /// Returns the effective conditional trigger for a conditional module.
+  String conditionalTriggerFor(String key) =>
+      moduleConditionalTrigger[key] ??
+      AppModule.all.where((m) => m.key == key).firstOrNull?.conditionalTrigger ??
+      '';
+
+  /// Returns the effective conditional follow-up question for a conditional module.
+  String conditionalQuestionFor(String key) =>
+      moduleConditionalQuestion[key] ??
+      AppModule.all.where((m) => m.key == key).firstOrNull?.conditionalQuestion ??
+      '';
+
   AppSettings copyWith({
     bool? menstruationTracking,
     int? notificationHour,
@@ -91,6 +119,9 @@ class AppSettings {
     Map<String, List<String>>? moduleOptions,
     Map<String, String>? moduleLabelLow,
     Map<String, String>? moduleLabelHigh,
+    Map<String, List<String>>? moduleConditionalOptions,
+    Map<String, String>? moduleConditionalTrigger,
+    Map<String, String>? moduleConditionalQuestion,
     List<CustomModule>? customModules,
     Map<String, String>? customModuleQuestions,
     List<String>? moduleOrder,
@@ -111,6 +142,9 @@ class AppSettings {
         moduleOptions: moduleOptions ?? this.moduleOptions,
         moduleLabelLow: moduleLabelLow ?? this.moduleLabelLow,
         moduleLabelHigh: moduleLabelHigh ?? this.moduleLabelHigh,
+        moduleConditionalOptions: moduleConditionalOptions ?? this.moduleConditionalOptions,
+        moduleConditionalTrigger: moduleConditionalTrigger ?? this.moduleConditionalTrigger,
+        moduleConditionalQuestion: moduleConditionalQuestion ?? this.moduleConditionalQuestion,
         customModules: customModules ?? this.customModules,
         customModuleQuestions: customModuleQuestions ?? this.customModuleQuestions,
         moduleOrder: moduleOrder ?? this.moduleOrder,
