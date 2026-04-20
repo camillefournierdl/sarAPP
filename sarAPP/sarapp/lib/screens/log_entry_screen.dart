@@ -610,8 +610,8 @@ class _SexSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     return SegmentedButton<String>(
       segments: const [
-        ButtonSegment(value: 'yes', label: Text('Yes'), icon: Text('💑')),
-        ButtonSegment(value: 'no', label: Text('No'), icon: Text('🚫')),
+        ButtonSegment(value: 'yes', label: Text('Yes'), icon: Text('🍃')),
+        ButtonSegment(value: 'no', label: Text('No'), icon: Text('🪹')),
       ],
       selected: value != null ? {value!} : {},
       emptySelectionAllowed: true,

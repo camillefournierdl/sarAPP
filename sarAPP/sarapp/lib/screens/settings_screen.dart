@@ -143,8 +143,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
             value: settings.showHighFertility,
             onChanged: (v) => context
                 .read<SettingsProvider>()
-                .update(settings.copyWith(showHighFertility: v)),
+                .update(settings.copyWith(
+                  showHighFertility: v,
+                  showLastSex: v ? settings.showLastSex : false,
+                )),
           ),
+          if (settings.showHighFertility)
+            SwitchListTile(
+              secondary: const Icon(Icons.favorite_outline),
+              title: const Text('Show intimacy'),
+              subtitle: const Text(
+                  'Displays which days have been logged with intimacy (pink dot)'),
+              value: settings.showLastSex,
+              onChanged: (v) => context
+                  .read<SettingsProvider>()
+                  .update(settings.copyWith(showLastSex: v)),
+            ),
         ],
 
         // ── Questionnaire modules ─────────────────────────────────────────

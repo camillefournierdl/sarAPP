@@ -12,6 +12,7 @@ class AppSettings {
   /// null = follow device locale, 'monday', or 'sunday'
   final String? calendarStartDay;
   final bool showHighFertility;
+  final bool showLastSex;
   final List<String> customEmotions;
   final List<String> customSymptoms;
   final List<String> customSports;
@@ -34,6 +35,7 @@ class AppSettings {
     },
     this.calendarStartDay,
     this.showHighFertility = false,
+    this.showLastSex = false,
     this.customEmotions = const [
       '😊 Happy', '😢 Sad', '😤 Angry', '😰 Anxious', '😴 Tired', '⚡ Energized',
     ],
@@ -75,6 +77,7 @@ class AppSettings {
     Set<String>? enabledModules,
     Object? calendarStartDay = _sentinel,
     bool? showHighFertility,
+    bool? showLastSex,
     List<String>? customEmotions,
     List<String>? customSymptoms,
     List<String>? customSports,
@@ -97,6 +100,7 @@ class AppSettings {
             ? this.calendarStartDay
             : calendarStartDay as String?,
         showHighFertility: showHighFertility ?? this.showHighFertility,
+        showLastSex: showLastSex ?? this.showLastSex,
         customEmotions: customEmotions ?? this.customEmotions,
         customSymptoms: customSymptoms ?? this.customSymptoms,
         customSports: customSports ?? this.customSports,

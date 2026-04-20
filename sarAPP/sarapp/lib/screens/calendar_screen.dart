@@ -157,6 +157,13 @@ class _CycleCalendarTabState extends State<_CycleCalendarTab> {
       phases.entries.map((e) => Object.hash(e.key, e.value)),
     ));
 
+    final sexDates = settings.showLastSex
+        ? entries
+            .where((e) => e.hadSex == 'yes')
+            .map<String>((e) => e.date as String)
+            .toSet()
+        : <String>{};
+
     return SingleChildScrollView(
       child: Column(
         children: [
@@ -177,6 +184,7 @@ class _CycleCalendarTabState extends State<_CycleCalendarTab> {
           },
           onPageChanged: widget.onFocusedDayChanged,
           entries: entries,
+          sexDates: sexDates,
           dayColorBuilder: (day) {
             final phase = phases[_dateOnly(day)];
             return phase != null
@@ -227,7 +235,9 @@ class _CycleCalendarTabState extends State<_CycleCalendarTab> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: _PhaseLegend(
-                showHighFertility: settings.showHighFertility),
+              showHighFertility: settings.showHighFertility,
+              showLastSex: settings.showLastSex,
+            ),
           ),
         ],
       ],
@@ -336,8 +346,8 @@ class _SharedCalendar extends StatelessWidget {
   final void Function(DateTime, DateTime) onDaySelected;
   final void Function(DateTime) onPageChanged;
   final List<dynamic> entries;
-  // Returns the background color for a day, or null for default.
   final Color? Function(DateTime day) dayColorBuilder;
+  final Set<String> sexDates;
 
   const _SharedCalendar({
     super.key,
@@ -347,6 +357,7 @@ class _SharedCalendar extends StatelessWidget {
     required this.onPageChanged,
     required this.entries,
     required this.dayColorBuilder,
+    this.sexDates = const {},
   });
 
   @override
@@ -371,11 +382,19 @@ class _SharedCalendar extends StatelessWidget {
       },
       calendarBuilders: CalendarBuilders(
         defaultBuilder: (_, day, __) => _DayCell(
-            day: day, color: dayColorBuilder(day)),
+            day: day,
+            color: dayColorBuilder(day),
+            hasSex: sexDates.contains(DateFormat('yyyy-MM-dd').format(day))),
         todayBuilder: (_, day, __) => _DayCell(
-            day: day, color: dayColorBuilder(day), isToday: true),
+            day: day,
+            color: dayColorBuilder(day),
+            isToday: true,
+            hasSex: sexDates.contains(DateFormat('yyyy-MM-dd').format(day))),
         selectedBuilder: (_, day, __) => _DayCell(
-            day: day, color: dayColorBuilder(day), isSelected: true),
+            day: day,
+            color: dayColorBuilder(day),
+            isSelected: true,
+            hasSex: sexDates.contains(DateFormat('yyyy-MM-dd').format(day))),
         markerBuilder: (_, day, events) {
           if (events.isEmpty) return const SizedBox.shrink();
           return Positioned(
@@ -423,12 +442,14 @@ class _DayCell extends StatelessWidget {
   final Color? color;
   final bool isToday;
   final bool isSelected;
+  final bool hasSex;
 
   const _DayCell({
     required this.day,
     this.color,
     this.isToday = false,
     this.isSelected = false,
+    this.hasSex = false,
   });
 
   @override
@@ -457,25 +478,42 @@ class _DayCell extends StatelessWidget {
       decoration = const BoxDecoration(shape: BoxShape.circle);
     }
 
-    return Container(
-      margin: const EdgeInsets.all(4),
-      decoration: decoration,
-      child: Center(
-        child: Text(
-          '${day.day}',
-          style: TextStyle(
-            fontSize: isSelected ? 14 : 13,
-            color: isSelected
-                ? Colors.black
-                : color != null
-                    ? (color!.computeLuminance() < 0.35
-                        ? Colors.white
-                        : Colors.black87)
-                    : null,
-            fontWeight: isToday || isSelected ? FontWeight.bold : null,
+    return Stack(
+      children: [
+        Container(
+          margin: const EdgeInsets.all(4),
+          decoration: decoration,
+          child: Center(
+            child: Text(
+              '${day.day}',
+              style: TextStyle(
+                fontSize: isSelected ? 14 : 13,
+                color: isSelected
+                    ? Colors.black
+                    : color != null
+                        ? (color!.computeLuminance() < 0.35
+                            ? Colors.white
+                            : Colors.black87)
+                        : null,
+                fontWeight: isToday || isSelected ? FontWeight.bold : null,
+              ),
+            ),
           ),
         ),
-      ),
+        if (hasSex)
+          Positioned(
+            top: 2,
+            right: 2,
+            child: Container(
+              width: 7,
+              height: 7,
+              decoration: const BoxDecoration(
+                color: Color(0xFFE91E8C),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -484,7 +522,8 @@ class _DayCell extends StatelessWidget {
 
 class _PhaseLegend extends StatelessWidget {
   final bool showHighFertility;
-  const _PhaseLegend({required this.showHighFertility});
+  final bool showLastSex;
+  const _PhaseLegend({required this.showHighFertility, this.showLastSex = false});
 
   @override
   Widget build(BuildContext context) {
@@ -500,7 +539,11 @@ class _PhaseLegend extends StatelessWidget {
     return Wrap(
       spacing: 12,
       runSpacing: 4,
-      children: phases.map((p) => _LegendDot(p.$1, cyclePhaseColor(p.$2))).toList(),
+      children: [
+        ...phases.map((p) => _LegendDot(p.$1, cyclePhaseColor(p.$2))),
+        if (showLastSex)
+          const _LegendDot('Intimacy', Color(0xFFE91E8C)),
+      ],
     );
   }
 }

@@ -261,6 +261,8 @@ class DatabaseService {
       calendarStartDay: await _getSetting('calendar_start_day'),
       showHighFertility:
           (await _getSetting('show_high_fertility') ?? 'false') == 'true',
+      showLastSex:
+          (await _getSetting('show_last_sex') ?? 'false') == 'true',
       customEmotions: _parseStringList(
           await _getSetting('custom_emotions'),
           const ['😊 Happy', '😢 Sad', '😤 Angry', '😰 Anxious', '😴 Tired', '⚡ Energized']),
@@ -295,6 +297,7 @@ class DatabaseService {
     await _saveSetting('onboarding_complete', s.onboardingComplete.toString());
     await _saveSetting('enabled_modules', jsonEncode(s.enabledModules.toList()));
     await _saveSetting('show_high_fertility', s.showHighFertility.toString());
+    await _saveSetting('show_last_sex', s.showLastSex.toString());
     await _saveSetting('custom_emotions', jsonEncode(s.customEmotions));
     await _saveSetting('custom_symptoms', jsonEncode(s.customSymptoms));
     await _saveSetting('custom_sports', jsonEncode(s.customSports));
