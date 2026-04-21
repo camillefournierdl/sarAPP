@@ -2,6 +2,53 @@
 
 Flutter daily-journaling app. All data stays on-device (SQLite via sqflite). No accounts, no cloud.
 
+## Installing on Android
+
+The easiest path is to build an APK on any machine (Mac, Linux, Windows) and sideload it onto the phone.
+
+### One-time machine setup
+
+```bash
+# Flutter SDK (same install as for iOS — skip if already installed)
+brew install --cask flutter   # macOS; use your OS's package manager otherwise
+```
+
+Install **Android Studio** from https://developer.android.com/studio. On first launch it downloads the Android SDK + platform tools. Then:
+
+```bash
+flutter doctor --android-licenses   # accept all licenses
+flutter doctor                      # should show Android toolchain ✓
+```
+
+### Build the APK
+
+```bash
+git clone https://github.com/camillefournierdl/sarAPP.git
+cd sarAPP/sarAPP/sarapp
+flutter pub get
+flutter build apk --release
+```
+
+The signed APK ends up at `build/app/outputs/flutter-apk/app-release.apk` (about 30 MB). It's signed with a debug key — fine for personal use, not for the Play Store.
+
+### Install on the phone
+
+Two options:
+
+**USB / adb** — fastest if you have `adb` set up:
+
+1. On the phone: enable **Developer Options** (Settings → About phone → tap **Build number** 7 times), then **Settings → System → Developer options → USB debugging**.
+2. Plug the phone in, accept the RSA prompt.
+3. `flutter install` (or `adb install build/app/outputs/flutter-apk/app-release.apk`).
+
+**Sideload** — no cable, works from any machine:
+
+1. Transfer `app-release.apk` to the phone (email, Drive, USB file copy, AirDroid…).
+2. On the phone: **Settings → Apps → Special app access → Install unknown apps** → allow your file manager / browser.
+3. Open the APK from the file manager and tap **Install**.
+
+No expiration — unlike iOS free signing, the install stays valid indefinitely. Just rebuild and reinstall when a new version drops.
+
 ## Installing on iPhone (free Apple ID)
 
 End-to-end setup for running sarAPP on a physical iPhone with no paid Apple Developer account.
