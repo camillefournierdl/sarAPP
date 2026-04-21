@@ -436,10 +436,9 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
 
     final pageWidgets = <Widget>[];
     for (final key in pages[currentPage]) {
-      final builtinMatches = AppModule.all.where((m) => m.key == key);
-      if (builtinMatches.isNotEmpty) {
-        final widgets =
-            _buildBuiltinModule(builtinMatches.first, settings, isFemale);
+      final builtin = AppModule.forKey(key);
+      if (builtin != null) {
+        final widgets = _buildBuiltinModule(builtin, settings, isFemale);
         if (widgets != null) pageWidgets.addAll(widgets);
         continue;
       }

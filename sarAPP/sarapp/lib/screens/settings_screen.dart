@@ -450,13 +450,6 @@ class _Header extends StatelessWidget {
 
 // ── Modules sub-screen ────────────────────────────────────────────────────────
 
-// ── Shared helper ─────────────────────────────────────────────────────────────
-
-AppModule? _builtinForKey(String key) {
-  final matches = AppModule.all.where((m) => m.key == key);
-  return matches.isEmpty ? null : matches.first;
-}
-
 // ── Modules sub-screen (reorderable) ─────────────────────────────────────────
 
 class ModulesScreen extends StatelessWidget {
@@ -487,7 +480,7 @@ class ModulesScreen extends StatelessWidget {
     final settings = context.watch<SettingsProvider>().settings;
 
     final visibleKeys = settings.moduleOrder.where((key) {
-      final builtin = _builtinForKey(key);
+      final builtin = AppModule.forKey(key);
       if (builtin != null) {
         return !builtin.menstruationOnly || settings.isMenstruationTracking;
       }
@@ -537,7 +530,7 @@ class ModulesScreen extends StatelessWidget {
                   _onReorder(oldIdx, newIdx, visibleKeys, settings, context),
               itemBuilder: (ctx, index) {
                 final key = visibleKeys[index];
-                final builtin = _builtinForKey(key);
+                final builtin = AppModule.forKey(key);
                 final custom = builtin == null
                     ? settings.customModules
                         .where((m) => m.id == key)
@@ -603,7 +596,7 @@ class CustomizeModulesScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('Customize modules')),
       body: ListView(
         children: settings.moduleOrder.map((key) {
-          final builtin = _builtinForKey(key);
+          final builtin = AppModule.forKey(key);
           if (builtin != null) {
             return ListTile(
               leading: Text(builtin.emoji,
@@ -681,9 +674,7 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
     final settings = context.read<SettingsProvider>().settings;
 
     if (widget.moduleKey != null) {
-      final builtinMatches =
-          AppModule.all.where((m) => m.key == widget.moduleKey);
-      _builtin = builtinMatches.isEmpty ? null : builtinMatches.first;
+      _builtin = AppModule.forKey(widget.moduleKey!);
       if (_builtin == null) {
         final customMatches =
             settings.customModules.where((m) => m.id == widget.moduleKey);
@@ -697,7 +688,7 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
       _nameCtrl = TextEditingController();
       _emojiCtrl = TextEditingController();
       _responseType = _builtin!.responseType;
-      _options = List.from(settings.moduleOptions[_builtin!.key] ?? _builtin!.defaultOptions);
+      _options = List.from(settings.optionsFor(_builtin!.key));
       _conditionalTriggerCtrl = TextEditingController(
           text: settings.conditionalTriggerFor(_builtin!.key));
       _conditionalQuestionCtrl = TextEditingController(
@@ -801,6 +792,12 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
         final opts = Map<String, List<String>>.from(settings.moduleOptions);
         opts[_builtin!.key] = List.from(_options);
         updated = updated.copyWith(moduleOptions: opts);
+
+        // Mark as user-modified so optionsFor() uses the stored value going
+        // forward, preserving the user's customization across app updates.
+        final modified = Set<String>.from(settings.userModifiedModuleOptions)
+          ..add(_builtin!.key);
+        updated = updated.copyWith(userModifiedModuleOptions: modified);
       }
 
       if (_responseType == ResponseType.scale) {

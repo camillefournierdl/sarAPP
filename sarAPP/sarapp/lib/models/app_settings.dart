@@ -15,6 +15,10 @@ class AppSettings {
   final bool showLastSex;
   /// Options for each module, keyed by module key (built-ins) or id (custom).
   final Map<String, List<String>> moduleOptions;
+  /// Module keys whose options the user has explicitly edited. Only these use
+  /// the stored [moduleOptions] value; all others fall back to AppModule defaults
+  /// so that default-option updates in new app versions are picked up automatically.
+  final Set<String> userModifiedModuleOptions;
   /// User overrides for scale slider low labels, keyed by module key/id.
   final Map<String, String> moduleLabelLow;
   /// User overrides for scale slider high labels, keyed by module key/id.
@@ -42,13 +46,8 @@ class AppSettings {
     this.calendarStartDay,
     this.showHighFertility = false,
     this.showLastSex = false,
-    this.moduleOptions = const {
-      'emotions': ['😊 Happy', '😢 Sad', '😤 Angry', '😰 Anxious', '😴 Tired', '⚡ Energized'],
-      'symptoms': ['cramps', 'bloating', 'headache', 'fatigue', 'mood swings', 'breast tenderness', 'back pain', 'acne'],
-      'sports':   ['🏋️ Weight lifting', '🏃 Intense cardio', '🚴 Endurance', '💃 Dance', '🧗 Climbing'],
-      'leisure':  ['📖 Reading', '🌱 Gardening', '🎲 Board games', '🎮 Gaming', '🎵 Music (practice)', '🎶 Music (group)'],
-      'food':     ['🌾 Gluten', '🥛 Lactose', '🍬 Sugars', '🍗 Chicken', '🐟 Fish'],
-    },
+    this.moduleOptions = const {},
+    this.userModifiedModuleOptions = const {},
     this.moduleLabelLow = const {},
     this.moduleLabelHigh = const {},
     this.moduleConditionalOptions = const {
@@ -69,40 +68,40 @@ class AppSettings {
 
   bool isModuleEnabled(String key) => enabledModules.contains(key);
 
-  /// Returns user-customized options for a module, falling back to AppModule defaults.
-  List<String> optionsFor(String key) =>
-      moduleOptions[key] ??
-      AppModule.all.where((m) => m.key == key).firstOrNull?.defaultOptions ??
-      const [];
+  /// Returns options for a module. Uses stored value only if the user has
+  /// explicitly edited this module's options; otherwise returns AppModule
+  /// defaults so that new defaults are picked up automatically on app updates.
+  List<String> optionsFor(String key) {
+    if (userModifiedModuleOptions.contains(key)) {
+      return moduleOptions[key] ?? AppModule.forKey(key)?.defaultOptions ?? const [];
+    }
+    return AppModule.forKey(key)?.defaultOptions ?? moduleOptions[key] ?? const [];
+  }
 
   /// Returns the effective low label for a scale module.
   String labelLowFor(String key) =>
-      moduleLabelLow[key] ??
-      AppModule.all.where((m) => m.key == key).firstOrNull?.labelLow ??
-      '';
+      moduleLabelLow[key] ?? AppModule.forKey(key)?.labelLow ?? '';
 
   /// Returns the effective high label for a scale module.
   String labelHighFor(String key) =>
-      moduleLabelHigh[key] ??
-      AppModule.all.where((m) => m.key == key).firstOrNull?.labelHigh ??
-      '';
+      moduleLabelHigh[key] ?? AppModule.forKey(key)?.labelHigh ?? '';
 
   /// Returns user-customized follow-up options for a conditional module.
   List<String> conditionalOptionsFor(String key) =>
       moduleConditionalOptions[key] ??
-      AppModule.all.where((m) => m.key == key).firstOrNull?.conditionalDefaultOptions ??
+      AppModule.forKey(key)?.conditionalDefaultOptions ??
       const [];
 
   /// Returns the effective conditional trigger for a conditional module.
   String conditionalTriggerFor(String key) =>
       moduleConditionalTrigger[key] ??
-      AppModule.all.where((m) => m.key == key).firstOrNull?.conditionalTrigger ??
+      AppModule.forKey(key)?.conditionalTrigger ??
       '';
 
   /// Returns the effective conditional follow-up question for a conditional module.
   String conditionalQuestionFor(String key) =>
       moduleConditionalQuestion[key] ??
-      AppModule.all.where((m) => m.key == key).firstOrNull?.conditionalQuestion ??
+      AppModule.forKey(key)?.conditionalQuestion ??
       '';
 
   AppSettings copyWith({
@@ -117,6 +116,7 @@ class AppSettings {
     bool? showHighFertility,
     bool? showLastSex,
     Map<String, List<String>>? moduleOptions,
+    Set<String>? userModifiedModuleOptions,
     Map<String, String>? moduleLabelLow,
     Map<String, String>? moduleLabelHigh,
     Map<String, List<String>>? moduleConditionalOptions,
@@ -140,6 +140,7 @@ class AppSettings {
         showHighFertility: showHighFertility ?? this.showHighFertility,
         showLastSex: showLastSex ?? this.showLastSex,
         moduleOptions: moduleOptions ?? this.moduleOptions,
+        userModifiedModuleOptions: userModifiedModuleOptions ?? this.userModifiedModuleOptions,
         moduleLabelLow: moduleLabelLow ?? this.moduleLabelLow,
         moduleLabelHigh: moduleLabelHigh ?? this.moduleLabelHigh,
         moduleConditionalOptions: moduleConditionalOptions ?? this.moduleConditionalOptions,

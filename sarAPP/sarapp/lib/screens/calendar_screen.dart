@@ -159,7 +159,7 @@ class _CycleCalendarTabState extends State<_CycleCalendarTab> {
 
     final sexDates = settings.showLastSex
         ? entries
-            .where((e) => e.hadSex == 'yes')
+            .where((e) => e.hadSex?.toLowerCase() == 'yes')
             .map<String>((e) => e.date as String)
             .toSet()
         : <String>{};

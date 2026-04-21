@@ -262,6 +262,14 @@ class DatabaseService {
     }
   }
 
+  static bool _listsEqual(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
   static Future<String?> _getSetting(String key) async {
     final db = await database;
     final rows =
@@ -312,6 +320,27 @@ class DatabaseService {
       await _saveSetting('module_conditional_options', jsonEncode(moduleConditionalOptions));
     }
 
+    // Migration: infer user_modified_module_options on first load by comparing
+    // stored options to current AppModule defaults. Stored options that differ
+    // from defaults are assumed to be user customizations.
+    final rawUserModified = await _getSetting('user_modified_module_options');
+    Set<String> userModifiedModuleOptions;
+    if (rawUserModified != null) {
+      userModifiedModuleOptions = Set<String>.from(
+          jsonDecode(rawUserModified) as List);
+    } else {
+      userModifiedModuleOptions = {};
+      for (final module in AppModule.all) {
+        final stored = moduleOptions[module.key];
+        if (stored != null &&
+            !_listsEqual(stored, module.defaultOptions)) {
+          userModifiedModuleOptions.add(module.key);
+        }
+      }
+      await _saveSetting('user_modified_module_options',
+          jsonEncode(userModifiedModuleOptions.toList()));
+    }
+
     return AppSettings(
       menstruationTracking:
           (await _getSetting('menstruation_tracking') ?? 'true') == 'true',
@@ -331,6 +360,7 @@ class DatabaseService {
       showLastSex:
           (await _getSetting('show_last_sex') ?? 'false') == 'true',
       moduleOptions: moduleOptions,
+      userModifiedModuleOptions: userModifiedModuleOptions,
       moduleLabelLow: _parseStringMap(await _getSetting('module_label_low')),
       moduleLabelHigh: _parseStringMap(await _getSetting('module_label_high')),
       moduleConditionalOptions: moduleConditionalOptions,
@@ -355,6 +385,8 @@ class DatabaseService {
     await _saveSetting('show_last_sex', s.showLastSex.toString());
     await _saveSetting('module_options',
         jsonEncode(s.moduleOptions.map((k, v) => MapEntry(k, v))));
+    await _saveSetting('user_modified_module_options',
+        jsonEncode(s.userModifiedModuleOptions.toList()));
     await _saveSetting('module_label_low', jsonEncode(s.moduleLabelLow));
     await _saveSetting('module_label_high', jsonEncode(s.moduleLabelHigh));
     await _saveSetting('module_conditional_options',

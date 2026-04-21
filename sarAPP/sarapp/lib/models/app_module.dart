@@ -105,6 +105,7 @@ class AppModule {
     responseType: ResponseType.multiSelect,
     defaultOptions: [
       '📖 Reading', '🌱 Gardening', '🎲 Board games', '🎮 Gaming',
+      '🎵 Music (practice)', '🎶 Music (group)',
     ],
   );
   static const food = AppModule(
@@ -176,6 +177,10 @@ class AppModule {
     labelLow: '🏜️',
     labelHigh: '🐸',
   );
+
+  /// Returns the built-in module with the given key, or null if not found.
+  static AppModule? forKey(String key) =>
+      all.where((m) => m.key == key).firstOrNull;
 
   /// All modules in questionnaire display order.
   static const List<AppModule> all = [
