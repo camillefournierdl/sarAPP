@@ -4,9 +4,10 @@
 .RData
 .Ruserdata
 
-# Flutter SDK (not part of the project)
-sarAPP/flutter/
-flutter/
+# Flutter SDK (not part of the project) — leading slash so we don't
+# match sarAPP/sarapp/ios/Flutter/ on case-insensitive filesystems
+/sarAPP/flutter/
+/flutter/
 
 # Flutter build artifacts
 sarAPP/sarapp/build/
