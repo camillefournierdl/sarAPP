@@ -46,7 +46,7 @@ class AppSettings {
       'emotions': ['😊 Happy', '😢 Sad', '😤 Angry', '😰 Anxious', '😴 Tired', '⚡ Energized'],
       'symptoms': ['cramps', 'bloating', 'headache', 'fatigue', 'mood swings', 'breast tenderness', 'back pain', 'acne'],
       'sports':   ['🏋️ Weight lifting', '🏃 Intense cardio', '🚴 Endurance', '💃 Dance', '🧗 Climbing'],
-      'leisure':  ['📖 Reading', '🌱 Gardening', '🎲 Board games', '🎮 Gaming'],
+      'leisure':  ['📖 Reading', '🌱 Gardening', '🎲 Board games', '🎮 Gaming', '🎵 Music (practice)', '🎶 Music (group)'],
       'food':     ['🌾 Gluten', '🥛 Lactose', '🍬 Sugars', '🍗 Chicken', '🐟 Fish'],
     },
     this.moduleLabelLow = const {},
