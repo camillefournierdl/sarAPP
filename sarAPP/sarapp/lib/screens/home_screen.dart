@@ -12,7 +12,7 @@ import 'analytics_screen.dart';
 import 'calendar_screen.dart';
 import 'history_screen.dart';
 import 'log_entry_screen.dart';
-import 'settings_screen.dart';
+import 'settings/settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});

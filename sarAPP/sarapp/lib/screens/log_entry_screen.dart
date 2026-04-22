@@ -6,8 +6,9 @@ import '../models/custom_module.dart';
 import '../models/entry.dart';
 import '../providers/entries_provider.dart';
 import '../providers/settings_provider.dart';
+import '../widgets/chip_selector.dart';
 import '../widgets/emotion_tag_selector.dart';
-import '../widgets/symptom_selector.dart';
+import '../widgets/scale_slider.dart';
 import '../models/app_settings.dart';
 
 class LogEntryScreen extends StatefulWidget {
@@ -141,7 +142,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
     Widget child;
     switch (m.key) {
       case 'happiness':
-        child = _HappinessSlider(
+        child = ScaleSlider(
           value: _happinessScore,
           onChanged: (v) => setState(() => _happinessScore = v),
           labelLow: settings.labelLowFor('happiness'),
@@ -154,21 +155,21 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
           onChanged: (v) => setState(() => _emotions = v),
         );
       case 'sleep':
-        child = _HappinessSlider(
+        child = ScaleSlider(
           value: _sleepScore,
           onChanged: (v) => setState(() => _sleepScore = v),
           labelLow: settings.labelLowFor('sleep'),
           labelHigh: settings.labelHighFor('sleep'),
         );
       case 'stress':
-        child = _HappinessSlider(
+        child = ScaleSlider(
           value: _stressScore,
           onChanged: (v) => setState(() => _stressScore = v),
           labelLow: settings.labelLowFor('stress'),
           labelHigh: settings.labelHighFor('stress'),
         );
       case 'weather':
-        child = _HappinessSlider(
+        child = ScaleSlider(
           value: _weatherScore,
           onChanged: (v) => setState(() => _weatherScore = v),
           labelLow: settings.labelLowFor('weather'),
@@ -199,7 +200,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
             const SizedBox(height: 16),
             _Section(
               title: followupQ.isNotEmpty ? followupQ : 'Follow-up',
-              child: _ChipSelector(
+              child: ChipSelector(
                 options: followupOpts,
                 selected: _sickTags,
                 onChanged: (v) => setState(() => _sickTags = v),
@@ -220,25 +221,25 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
           )).toList(),
         );
       case 'sports':
-        child = _ChipSelector(
+        child = ChipSelector(
           options: settings.optionsFor('sports'),
           selected: _sports,
           onChanged: (v) => setState(() => _sports = v),
         );
       case 'leisure':
-        child = _ChipSelector(
+        child = ChipSelector(
           options: settings.optionsFor('leisure'),
           selected: _leisure,
           onChanged: (v) => setState(() => _leisure = v),
         );
       case 'food':
-        child = _ChipSelector(
+        child = ChipSelector(
           options: settings.optionsFor('food'),
           selected: _foods,
           onChanged: (v) => setState(() => _foods = v),
         );
       case 'symptoms':
-        child = SymptomSelector(
+        child = ChipSelector(
           options: settings.optionsFor('symptoms'),
           selected: _symptoms,
           onChanged: (v) => setState(() => _symptoms = v),
@@ -253,7 +254,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
           ),
         );
       case 'libido':
-        child = _HappinessSlider(
+        child = ScaleSlider(
           value: _libidoScore,
           onChanged: (v) => setState(() => _libidoScore = v),
           labelLow: settings.labelLowFor('libido'),
@@ -271,7 +272,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
           )).toList(),
         );
       case 'water':
-        child = _HappinessSlider(
+        child = ScaleSlider(
           value: _waterGlasses,
           onChanged: (v) => setState(() => _waterGlasses = v),
           labelLow: settings.labelLowFor('water'),
@@ -294,7 +295,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
     switch (m.responseType) {
       case ResponseType.scale:
         final val = _customData[m.id] as int?;
-        return _HappinessSlider(
+        return ScaleSlider(
           value: val,
           onChanged: (v) => setState(() => _customData[m.id] = v),
           labelLow: m.labelLow,
@@ -302,7 +303,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
         );
       case ResponseType.multiSelect:
         final selected = List<String>.from(_customData[m.id] as List? ?? []);
-        return _ChipSelector(
+        return ChipSelector(
           options: m.options,
           selected: selected,
           onChanged: (v) => setState(() => _customData[m.id] = v),
@@ -368,7 +369,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
                         ),
                   ),
                 ),
-              _ChipSelector(
+              ChipSelector(
                 options: m.conditionalOptions,
                 selected: followup,
                 onChanged: (v) => setState(() {
@@ -523,92 +524,6 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
         ],
       ),
     ),
-    );
-  }
-}
-
-// ── Happiness slider ──────────────────────────────────────────────────────────
-
-class _HappinessSlider extends StatelessWidget {
-  final int? value;
-  final ValueChanged<int?> onChanged;
-  final String labelLow;
-  final String labelHigh;
-
-  const _HappinessSlider({
-    required this.value,
-    required this.onChanged,
-    this.labelLow = '',
-    this.labelHigh = '',
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
-    return Row(
-      children: [
-        if (labelLow.isNotEmpty) Text(labelLow, style: const TextStyle(fontSize: 16)),
-        Expanded(
-          child: Slider(
-            value: (value ?? 5).toDouble(),
-            min: 0,
-            max: 10,
-            divisions: 10,
-            label: value == null ? '—' : '$value',
-            onChanged: (v) => onChanged(v.round()),
-          ),
-        ),
-        if (labelHigh.isNotEmpty) Text(labelHigh, style: const TextStyle(fontSize: 16)),
-        const SizedBox(width: 8),
-        SizedBox(
-          width: 36,
-          child: Text(
-            value == null ? '—' : '$value / 10',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: value == null ? Colors.grey : primary,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Generic multi-select chip row ─────────────────────────────────────────────
-
-class _ChipSelector extends StatelessWidget {
-  final List<String> options;
-  final List<String> selected;
-  final ValueChanged<List<String>> onChanged;
-
-  const _ChipSelector({
-    required this.options,
-    required this.selected,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: options.map((opt) {
-        final isSelected = selected.contains(opt);
-        return FilterChip(
-          label: Text(opt),
-          selected: isSelected,
-          onSelected: (on) {
-            final updated = List<String>.from(selected);
-            if (on) {
-              updated.add(opt);
-            } else {
-              updated.remove(opt);
-            }
-            onChanged(updated);
-          },
-        );
-      }).toList(),
     );
   }
 }
