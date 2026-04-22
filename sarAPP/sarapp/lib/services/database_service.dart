@@ -45,6 +45,7 @@ class DatabaseService {
             had_sex          TEXT,
             water_glasses    INTEGER,
             custom_data      TEXT    NOT NULL DEFAULT '{}',
+            answered_modules TEXT    NOT NULL DEFAULT '[]',
             created_at       TEXT    NOT NULL
           )
         ''');
@@ -128,8 +129,13 @@ class DatabaseService {
           await db.execute(
               'ALTER TABLE entries ADD COLUMN stress_score INTEGER');
         }
+        // v11 → v12: add answered_modules column
+        if (oldVersion < 12) {
+          await db.execute(
+              "ALTER TABLE entries ADD COLUMN answered_modules TEXT NOT NULL DEFAULT '[]'");
+        }
       },
-      version: 11,
+      version: 12,
     );
   }
 
@@ -370,6 +376,8 @@ class DatabaseService {
       customModuleQuestions: _parseQuestionOverrides(
           await _getSetting('custom_module_questions')),
       moduleOrder: _parseModuleOrder(await _getSetting('module_order')),
+      analyticsNerdMode:
+          (await _getSetting('analytics_nerd_mode') ?? 'false') == 'true',
     );
   }
 
@@ -398,6 +406,7 @@ class DatabaseService {
     await _saveSetting('custom_module_questions',
         jsonEncode(s.customModuleQuestions));
     await _saveSetting('module_order', jsonEncode(s.moduleOrder));
+    await _saveSetting('analytics_nerd_mode', s.analyticsNerdMode.toString());
     if (s.calendarStartDay != null) {
       await _saveSetting('calendar_start_day', s.calendarStartDay!);
     } else {

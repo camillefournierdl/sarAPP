@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
@@ -32,6 +33,8 @@ class NotificationService {
   }) async {
     _scheduledHour = notificationHour;
     _scheduledMinute = notificationMinute;
+
+    if (!Platform.isAndroid && !Platform.isIOS) return;
 
     tz_data.initializeTimeZones();
     try {
@@ -93,6 +96,7 @@ class NotificationService {
   }
 
   static Future<bool> requestPermission() async {
+    if (!Platform.isAndroid && !Platform.isIOS) return false;
     final android = _plugin
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
@@ -100,6 +104,7 @@ class NotificationService {
   }
 
   static Future<void> scheduleDailyReminder(int hour, int minute) async {
+    if (!Platform.isAndroid && !Platform.isIOS) return;
     _scheduledHour = hour;
     _scheduledMinute = minute;
     await _plugin.cancel(_notifId);
@@ -126,7 +131,10 @@ class NotificationService {
     );
   }
 
-  static Future<void> cancelAll() async => _plugin.cancelAll();
+  static Future<void> cancelAll() async {
+    if (!Platform.isAndroid && !Platform.isIOS) return;
+    await _plugin.cancelAll();
+  }
 
   static tz.TZDateTime _nextInstanceOf(int hour, int minute) {
     final now = tz.TZDateTime.now(tz.local);

@@ -32,6 +32,7 @@ class AppSettings {
   final List<CustomModule> customModules;
   final Map<String, String> customModuleQuestions;
   final List<String> moduleOrder;
+  final bool analyticsNerdMode;
 
   const AppSettings({
     this.menstruationTracking = true,
@@ -62,6 +63,7 @@ class AppSettings {
       'health', 'work', 'sports', 'leisure', 'food', 'water',
       'symptoms', 'libido', 'sex', 'notes',
     ],
+    this.analyticsNerdMode = false,
   });
 
   bool get isMenstruationTracking => menstruationTracking;
@@ -125,6 +127,7 @@ class AppSettings {
     List<CustomModule>? customModules,
     Map<String, String>? customModuleQuestions,
     List<String>? moduleOrder,
+    bool? analyticsNerdMode,
   }) =>
       AppSettings(
         menstruationTracking: menstruationTracking ?? this.menstruationTracking,
@@ -149,6 +152,7 @@ class AppSettings {
         customModules: customModules ?? this.customModules,
         customModuleQuestions: customModuleQuestions ?? this.customModuleQuestions,
         moduleOrder: moduleOrder ?? this.moduleOrder,
+        analyticsNerdMode: analyticsNerdMode ?? this.analyticsNerdMode,
       );
 
   String questionFor(String moduleKey, String defaultQuestion) =>

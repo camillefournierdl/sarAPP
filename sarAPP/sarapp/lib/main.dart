@@ -1,7 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import 'providers/analytics_provider.dart';
 import 'providers/entries_provider.dart';
 import 'providers/settings_provider.dart';
 import 'screens/home_screen.dart';
@@ -11,6 +14,12 @@ import 'services/notification_service.dart';
 void main() async {
   // Required before any async calls before runApp()
   WidgetsFlutterBinding.ensureInitialized();
+
+  // sqflite_common_ffi required for Windows/Linux desktop
+  if (Platform.isWindows || Platform.isLinux) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
 
   // Make the status bar transparent with dark icons (white background)
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
@@ -37,6 +46,7 @@ void main() async {
       providers: [
         ChangeNotifierProvider.value(value: settingsProvider),
         ChangeNotifierProvider.value(value: entriesProvider),
+        ChangeNotifierProvider(create: (_) => AnalyticsProvider()),
       ],
       child: const SarApp(),
     ),

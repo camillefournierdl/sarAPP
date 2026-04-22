@@ -7,6 +7,7 @@ import '../models/app_module.dart';
 import '../providers/entries_provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/cycle_service.dart';
+import '../services/database_service.dart';
 import '../services/export_service.dart';
 import '../services/notification_service.dart';
 
@@ -18,6 +19,8 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  bool _isSeeding = false;
+
   Future<void> _export() async {
     final entries = context.read<EntriesProvider>().entries;
     if (entries.isEmpty) {
@@ -89,6 +92,150 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     if (picked == null || !mounted) return;
     await _setReminder(true, time: picked);
+  }
+
+  Future<void> _seedTestData() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Seed test data?'),
+        content: const Text(
+          'Inserts 60 synthetic entries with known correlations for '
+          'testing the Analytics tab.\n\n'
+          'Existing entries on those dates will be overwritten.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Seed'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isSeeding = true);
+
+    final now = DateTime.now();
+    // 60 entries with realistic variation across all default-enabled modules.
+    // Structure: 7-day phase cycle (bad → neutral → good) + per-day hash noise.
+    // Known correlations planted:
+    //   happiness ↔ sleep (Spearman), health=Sick → lower scores (MW),
+    //   emotions/leisure follow phase, food/weather mostly independent.
+    for (var i = 0; i < 60; i++) {
+      // Deterministic pseudo-random: independent sequence per salt.
+      int r(int salt) =>
+          ((i * 1664525 + salt * 22695477 + 1013904223) ^
+                  ((i * 22695477 + salt * 1664525) >> 14)) %
+              100;
+
+      final d = now.subtract(Duration(days: 59 - i));
+      final dateStr = '${d.year}-'
+          '${d.month.toString().padLeft(2, '0')}-'
+          '${d.day.toString().padLeft(2, '0')}';
+
+      // 3-phase weekly cycle: 0 = rough, 1 = average, 2 = good
+      final phase = (i ~/ 7) % 3;
+      final base = [2, 5, 7][phase];
+
+      // ── Scores (correlated via shared phase base) ──────────────────────
+      final happiness = (base + r(1) % 5 - 2).clamp(1, 10);
+      final sleep     = (base + r(2) % 5 - 2).clamp(1, 10);
+      final weather   = (4 + r(20) % 7 - 2).clamp(1, 10); // mostly independent
+
+      // ── Health (Sick on some low-happiness days) ───────────────────────
+      final isSick = happiness <= 3 && r(3) < 45;
+      final healthStatus = isSick ? 'Sick' : 'Healthy';
+      final sickTagPool = [
+        '🤧 Cold', '🤒 Flu', '🤢 Nausea', '🤕 Headache', '😮‍💨 Fatigue',
+      ];
+      final sickTags = <String>[
+        if (isSick)
+          for (var j = 0; j < sickTagPool.length; j++)
+            if (r(60 + j) < 40) sickTagPool[j],
+        // guarantee at least one tag when sick
+        if (isSick && r(66) < 40) sickTagPool[r(67) % sickTagPool.length],
+      ];
+
+      // ── Emotions (phase-weighted) ──────────────────────────────────────
+      final emotions = <String>[
+        if (phase == 2) ...[ // good week
+          if (r(10) < 70) '😊 Happy',
+          if (r(11) < 50) '⚡ Energized',
+          if (r(12) < 15) '😰 Anxious',
+        ] else if (phase == 0) ...[ // rough week
+          if (r(10) < 65) '😴 Tired',
+          if (r(11) < 50) '😰 Anxious',
+          if (r(12) < 35) '😢 Sad',
+          if (r(13) < 20) '😊 Happy',
+        ] else ...[ // neutral week
+          if (r(10) < 40) '😊 Happy',
+          if (r(11) < 35) '😴 Tired',
+          if (r(12) < 25) '😰 Anxious',
+          if (r(13) < 20) '⚡ Energized',
+        ],
+      ];
+
+      // ── Work (mostly full days, occasional half/off) ───────────────────
+      final workRoll = r(30);
+      final workDay = workRoll < 18 ? '🌿 Day off'
+          : workRoll < 32 ? '🌗 Half day'
+          : '💼 Full day';
+
+      // ── Sports (more likely on good days) ─────────────────────────────
+      final sportsPool = ['🏋️ Weight lifting', '🏃 Intense cardio', '🚴 Endurance'];
+      final sports = <String>[
+        if (happiness >= 6 && r(4) < 35) sportsPool[r(5) % sportsPool.length],
+      ];
+
+      // ── Leisure (more likely on good days or days off) ─────────────────
+      final leisurePool = [
+        '📖 Reading', '🎮 Gaming', '🎵 Music (practice)', '🌱 Gardening', '🎲 Board games',
+      ];
+      final threshold = phase == 2 ? 35 : phase == 1 ? 22 : 12;
+      final leisure = <String>[
+        for (var j = 0; j < leisurePool.length; j++)
+          if (r(40 + j) < threshold) leisurePool[j],
+      ];
+
+      // ── Food (random; slight junk bias on rough days) ──────────────────
+      final foodPool = ['🌾 Gluten', '🥛 Lactose', '🍬 Sugars', '🍗 Chicken', '🐟 Fish'];
+      final foods = <String>[
+        for (var j = 0; j < foodPool.length; j++)
+          if (r(50 + j) < (j <= 2 && phase == 0 ? 45 : 28)) foodPool[j],
+      ];
+
+      await DatabaseService.upsertEntry(Entry.create(
+        date: dateStr,
+        happinessScore: happiness,
+        sleepScore: sleep,
+        weatherScore: weather,
+        emotions: emotions,
+        healthStatus: healthStatus,
+        sickTags: sickTags,
+        workDay: workDay,
+        sports: sports,
+        leisure: leisure,
+        foods: foods,
+        answeredModules: const {
+          'happiness', 'sleep', 'weather', 'emotions',
+          'health', 'work', 'sports', 'leisure', 'food',
+        },
+      ));
+    }
+
+    // Refresh the provider once rather than 60 times
+    if (!mounted) return;
+    await context.read<EntriesProvider>().load();
+
+    if (!mounted) return;
+    setState(() => _isSeeding = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('60 test entries seeded.')),
+    );
   }
 
   Future<void> _resetData() async {
@@ -171,6 +318,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
           onTap: () => _pickStartDay(settings),
         ),
 
+        // ── Analytics ─────────────────────────────────────────────────────
+        const _Header('Analytics'),
+        SwitchListTile(
+          secondary: const Icon(Icons.science_outlined),
+          title: const Text('Nerd mode'),
+          subtitle: const Text('Show statistical details on association cards'),
+          value: settings.analyticsNerdMode,
+          onChanged: (v) => context
+              .read<SettingsProvider>()
+              .update(settings.copyWith(analyticsNerdMode: v)),
+        ),
+
         // ── Cycle stats (female only) ─────────────────────────────────────
         if (settings.isMenstruationTracking) ...[
           const _Header('Cycle'),
@@ -238,6 +397,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   TextStyle(color: Theme.of(context).colorScheme.error)),
           subtitle: const Text('Delete all entries and cycle baseline'),
           onTap: _resetData,
+        ),
+
+        // ── Debug ─────────────────────────────────────────────────────────
+        const _Header('Debug'),
+        ListTile(
+          leading: _isSeeding
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.science_outlined),
+          title: const Text('Seed test data'),
+          subtitle: const Text(
+              'Insert 60 synthetic entries for Analytics testing'),
+          onTap: _isSeeding ? null : _seedTestData,
         ),
 
         // ── About ─────────────────────────────────────────────────────────

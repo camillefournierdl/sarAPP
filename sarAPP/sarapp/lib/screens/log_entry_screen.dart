@@ -100,6 +100,9 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
       if (v is Map) return v['value'] == null;
       return false;
     });
+    final settings = context.read<SettingsProvider>().settings;
+    final answeredModules =
+        settings.moduleOrder.where(settings.isModuleEnabled).toSet();
     final entry = Entry.create(
       date: _date,
       emotions: _emotions,
@@ -122,6 +125,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
       hadSex: _hadSex,
       waterGlasses: _waterGlasses,
       customData: Map.from(_customData),
+      answeredModules: answeredModules,
     );
     await context.read<EntriesProvider>().saveEntry(entry);
     if (!mounted) return;

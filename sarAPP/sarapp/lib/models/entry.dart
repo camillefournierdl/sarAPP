@@ -23,6 +23,7 @@ class Entry {
   final String? hadSex;      // 'yes' | 'no' | null = not answered
   final int? waterGlasses;   // 0–10, null = not answered
   final Map<String, dynamic> customData;
+  final Set<String> answeredModules; // keys shown to user at log time; empty on old entries
   final String createdAt;
 
   const Entry({
@@ -48,6 +49,7 @@ class Entry {
     this.hadSex,
     this.waterGlasses,
     this.customData = const {},
+    this.answeredModules = const {},
     required this.createdAt,
   });
 
@@ -73,6 +75,7 @@ class Entry {
     String? hadSex,
     int? waterGlasses,
     Map<String, dynamic> customData = const {},
+    Set<String> answeredModules = const {},
   }) =>
       Entry(
         date: date,
@@ -96,6 +99,7 @@ class Entry {
         hadSex: hadSex,
         waterGlasses: waterGlasses,
         customData: customData,
+        answeredModules: answeredModules,
         createdAt: DateTime.now().toIso8601String(),
       );
 
@@ -122,6 +126,7 @@ class Entry {
         'had_sex': hadSex,
         'water_glasses': waterGlasses,
         'custom_data': jsonEncode(customData),
+        'answered_modules': jsonEncode(answeredModules.toList()),
         'created_at': createdAt,
       };
 
@@ -155,6 +160,8 @@ class Entry {
         waterGlasses: map['water_glasses'] as int?,
         customData: Map<String, dynamic>.from(
             jsonDecode(map['custom_data'] as String? ?? '{}') as Map),
+        answeredModules: Set<String>.from(
+            jsonDecode(map['answered_modules'] as String? ?? '[]') as List),
         createdAt: map['created_at'] as String,
       );
 

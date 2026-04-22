@@ -8,6 +8,7 @@ import '../services/cycle_service.dart';
 import '../services/notification_service.dart';
 import '../widgets/cycle_phase_selector.dart';
 import '../widgets/emotion_tag_selector.dart';
+import 'analytics_screen.dart';
 import 'calendar_screen.dart';
 import 'history_screen.dart';
 import 'log_entry_screen.dart';
@@ -48,21 +49,24 @@ class _HomeScreenState extends State<HomeScreen> {
     _DashboardTab(),
     HistoryScreen(),
     CalendarScreen(),
+    AnalyticsScreen(),
     SettingsScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(child: _tabs[_tab]),
+      body: SafeArea(child: _tabs[_tab.clamp(0, _tabs.length - 1)]),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab,
+        selectedIndex: _tab.clamp(0, _tabs.length - 1),
         onDestinationSelected: (i) => setState(() => _tab = i),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
           NavigationDestination(icon: Icon(Icons.history), label: 'History'),
           NavigationDestination(
               icon: Icon(Icons.calendar_month), label: 'Calendar'),
+          NavigationDestination(
+              icon: Icon(Icons.insights), label: 'Analytics'),
           NavigationDestination(
               icon: Icon(Icons.settings), label: 'Settings'),
         ],

@@ -12,6 +12,7 @@ dependencies:
 
   # Local database (SQLite)
   sqflite: ^2.3.3
+  sqflite_common_ffi: ^2.3.4
   path: ^1.9.0
 
   # State management
