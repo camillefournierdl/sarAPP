@@ -63,7 +63,7 @@ class SarApp extends StatelessWidget {
     final settings = context.watch<SettingsProvider>().settings;
 
     return MaterialApp(
-      title: 'sarAPP',
+      title: 'sarapp',
       debugShowCheckedModeBanner: false,
       navigatorKey: NotificationService.navigatorKey,
       theme: ThemeData(

@@ -360,7 +360,7 @@ class DatabaseService {
           (await _getSetting('onboarding_complete')) == 'true',
       lastPeriodStart: await _getSetting('last_period_start'),
       enabledModules: _parseModules(await _getSetting('enabled_modules')),
-      calendarStartDay: await _getSetting('calendar_start_day'),
+      calendarStartDay: await _getSetting('calendar_start_day') ?? 'monday',
       showHighFertility:
           (await _getSetting('show_high_fertility') ?? 'false') == 'true',
       showLastSex:
@@ -407,11 +407,7 @@ class DatabaseService {
         jsonEncode(s.customModuleQuestions));
     await _saveSetting('module_order', jsonEncode(s.moduleOrder));
     await _saveSetting('analytics_nerd_mode', s.analyticsNerdMode.toString());
-    if (s.calendarStartDay != null) {
-      await _saveSetting('calendar_start_day', s.calendarStartDay!);
-    } else {
-      await _deleteSetting('calendar_start_day');
-    }
+    await _saveSetting('calendar_start_day', s.calendarStartDay);
     if (s.lastPeriodStart != null) {
       await _saveSetting('last_period_start', s.lastPeriodStart!);
     } else {

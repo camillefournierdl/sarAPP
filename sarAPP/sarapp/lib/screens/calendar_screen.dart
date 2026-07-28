@@ -307,6 +307,10 @@ class _MoodCalendarTabState extends State<_MoodCalendarTab> {
     return SingleChildScrollView(
       child: Column(
         children: [
+          _InstructionBanner(
+            message: 'Tap a past day on the calendar to edit the log for that day.',
+          ),
+
           _SharedCalendar(
             focusedDay: widget.focusedDay,
             selectedDay: _selectedDay,
@@ -419,20 +423,7 @@ class _SharedCalendar extends StatelessWidget {
 
 StartingDayOfWeek _resolveStartDay(BuildContext context) {
   final pref = context.read<SettingsProvider>().settings.calendarStartDay;
-  if (pref == 'monday') return StartingDayOfWeek.monday;
-  if (pref == 'sunday') return StartingDayOfWeek.sunday;
-  return _localeStartDay(context);
-}
-
-StartingDayOfWeek _localeStartDay(BuildContext context) {
-  const sundayCountries = {
-    'US', 'CA', 'MX', 'BR', 'JP', 'CN', 'TW', 'HK', 'KR',
-    'SA', 'AE', 'IL', 'ZA', 'PH', 'VE', 'CO', 'AR',
-  };
-  final country = Localizations.localeOf(context).countryCode?.toUpperCase() ?? '';
-  return sundayCountries.contains(country)
-      ? StartingDayOfWeek.sunday
-      : StartingDayOfWeek.monday;
+  return pref == 'sunday' ? StartingDayOfWeek.sunday : StartingDayOfWeek.monday;
 }
 
 // ── Day cell ───────────────────────────────────────────────────────────────────

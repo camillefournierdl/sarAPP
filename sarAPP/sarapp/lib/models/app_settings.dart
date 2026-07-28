@@ -9,8 +9,8 @@ class AppSettings {
   final bool onboardingComplete;
   final String? lastPeriodStart;
   final Set<String> enabledModules;
-  /// null = follow device locale, 'monday', or 'sunday'
-  final String? calendarStartDay;
+  /// 'monday' or 'sunday'
+  final String calendarStartDay;
   final bool showHighFertility;
   final bool showLastSex;
   /// Options for each module, keyed by module key (built-ins) or id (custom).
@@ -44,7 +44,7 @@ class AppSettings {
     this.enabledModules = const {
       'happiness', 'emotions', 'sleep', 'weather', 'health', 'work', 'sports', 'leisure', 'food', 'notes'
     },
-    this.calendarStartDay,
+    this.calendarStartDay = 'monday',
     this.showHighFertility = false,
     this.showLastSex = false,
     this.moduleOptions = const {},
@@ -114,7 +114,7 @@ class AppSettings {
     bool? onboardingComplete,
     String? lastPeriodStart,
     Set<String>? enabledModules,
-    Object? calendarStartDay = _sentinel,
+    String? calendarStartDay,
     bool? showHighFertility,
     bool? showLastSex,
     Map<String, List<String>>? moduleOptions,
@@ -137,9 +137,7 @@ class AppSettings {
         onboardingComplete: onboardingComplete ?? this.onboardingComplete,
         lastPeriodStart: lastPeriodStart ?? this.lastPeriodStart,
         enabledModules: enabledModules ?? this.enabledModules,
-        calendarStartDay: calendarStartDay == _sentinel
-            ? this.calendarStartDay
-            : calendarStartDay as String?,
+        calendarStartDay: calendarStartDay ?? this.calendarStartDay,
         showHighFertility: showHighFertility ?? this.showHighFertility,
         showLastSex: showLastSex ?? this.showLastSex,
         moduleOptions: moduleOptions ?? this.moduleOptions,
@@ -169,6 +167,3 @@ class AppSettings {
     return copyWith(enabledModules: updated);
   }
 }
-
-// Sentinel so copyWith can distinguish "not provided" from explicit null.
-const Object _sentinel = Object();

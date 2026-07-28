@@ -24,10 +24,13 @@ class HistoryScreen extends StatelessWidget {
 
     return ListView.separated(
       padding: const EdgeInsets.all(12),
-      itemCount: entries.length,
+      itemCount: entries.length + 1,
       separatorBuilder: (_, __) => const SizedBox(height: 4),
       itemBuilder: (context, index) {
-        final e = entries[index];
+        if (index == 0) {
+          return const _SwipeToDeleteBanner();
+        }
+        final e = entries[index - 1];
         return Dismissible(
           key: ValueKey(e.id),
           direction: DismissDirection.endToStart,
@@ -93,6 +96,36 @@ class HistoryScreen extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _SwipeToDeleteBanner extends StatelessWidget {
+  const _SwipeToDeleteBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.swipe_left_outlined, color: colorScheme.onSecondaryContainer),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Swipe a log left to delete it.',
+              style: TextStyle(color: colorScheme.onSecondaryContainer),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
