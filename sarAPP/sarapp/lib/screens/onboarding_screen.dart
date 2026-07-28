@@ -80,7 +80,7 @@ class OnboardingScreen extends StatelessWidget {
             children: [
               const SizedBox(height: 16),
               Text(
-                'sarAPP',
+                'sarapp',
                 style: theme.textTheme.displaySmall
                     ?.copyWith(fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,

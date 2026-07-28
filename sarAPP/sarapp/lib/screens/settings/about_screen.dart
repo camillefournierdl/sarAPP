@@ -10,7 +10,7 @@ class AboutScreen extends StatelessWidget {
     final outline = theme.colorScheme.outline;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('About sarAPP')),
+      appBar: AppBar(title: const Text('About sarapp')),
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
@@ -20,7 +20,7 @@ class AboutScreen extends StatelessWidget {
               children: [
                 Icon(Icons.favorite_border, size: 56, color: primary),
                 const SizedBox(height: 12),
-                Text('sarAPP',
+                Text('sarapp',
                     style: theme.textTheme.headlineSmall
                         ?.copyWith(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
@@ -37,7 +37,7 @@ class AboutScreen extends StatelessWidget {
             icon: Icons.tune,
             title: 'Track what you choose',
             body:
-                'sarAPP lets you track different dimensions of your day. Everyone is different.'
+                'sarapp lets you track different dimensions of your day. Everyone is different.'
                 'You decide what dimensions matter to you. Enable or '
                 'disable any module at any time in Settings. '
                 'There is no required field.',
@@ -56,7 +56,7 @@ class AboutScreen extends StatelessWidget {
             icon: Icons.code,
             title: 'Free and open-source',
             body:
-                'sarAPP is free to use and its source code is open. You can '
+                'sarapp is free to use and its source code is open. You can '
                 'inspect exactly what it does, contribute improvements, or '
                 'adapt it for your own needs.',
           ),

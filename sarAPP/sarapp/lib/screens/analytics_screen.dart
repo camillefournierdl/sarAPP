@@ -41,6 +41,8 @@ class AnalyticsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          const _WipBanner(),
+          const SizedBox(height: 16),
           _TimeWindowBar(
             selected: analytics.timeWindow,
             onChanged: onTimeWindowChanged,
@@ -78,6 +80,38 @@ class AnalyticsScreen extends StatelessWidget {
               windowLabel: analytics.windowLabel(),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+// ── Work-in-progress banner ──────────────────────────────────────────────────────
+
+class _WipBanner extends StatelessWidget {
+  const _WipBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.construction, color: colorScheme.onSecondaryContainer),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Analytics is a work in progress — better charts and insights '
+              'are on the way.',
+              style: TextStyle(color: colorScheme.onSecondaryContainer),
+            ),
+          ),
         ],
       ),
     );

@@ -10,6 +10,7 @@ import '../widgets/chip_selector.dart';
 import '../widgets/emotion_tag_selector.dart';
 import '../widgets/scale_slider.dart';
 import '../models/app_settings.dart';
+import '../models/app_settings.dart';
 
 class LogEntryScreen extends StatefulWidget {
   final Entry? existing;

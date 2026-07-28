@@ -33,11 +33,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await ExportService.exportToCsv(entries, settings);
   }
 
-  String _startDayLabel(String? pref) {
-    if (pref == 'monday') return 'Monday';
-    if (pref == 'sunday') return 'Sunday';
-    return 'Device default';
-  }
+  String _startDayLabel(String pref) => pref == 'sunday' ? 'Sunday' : 'Monday';
 
   Future<void> _pickStartDay(AppSettings settings) async {
     final picked = await showDialog<String?>(
@@ -45,13 +41,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (ctx) => SimpleDialog(
         title: const Text('Week starts on'),
         children: [
-          _StartDayOption(ctx, label: 'Device default', value: null,    current: settings.calendarStartDay),
-          _StartDayOption(ctx, label: 'Monday',         value: 'monday', current: settings.calendarStartDay),
-          _StartDayOption(ctx, label: 'Sunday',         value: 'sunday', current: settings.calendarStartDay),
+          _StartDayOption(ctx, label: 'Monday', value: 'monday', current: settings.calendarStartDay),
+          _StartDayOption(ctx, label: 'Sunday', value: 'sunday', current: settings.calendarStartDay),
         ],
       ),
     );
-    if (!mounted || picked == settings.calendarStartDay) return;
+    if (!mounted || picked == null || picked == settings.calendarStartDay) return;
     // ignore: use_build_context_synchronously
     await context.read<SettingsProvider>().update(
           settings.copyWith(calendarStartDay: picked),
@@ -318,18 +313,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           onTap: () => _pickStartDay(settings),
         ),
 
-        // ── Analytics ─────────────────────────────────────────────────────
-        const _Header('Analytics'),
-        SwitchListTile(
-          secondary: const Icon(Icons.science_outlined),
-          title: const Text('Nerd mode'),
-          subtitle: const Text('Show statistical details on association cards'),
-          value: settings.analyticsNerdMode,
-          onChanged: (v) => context
-              .read<SettingsProvider>()
-              .update(settings.copyWith(analyticsNerdMode: v)),
-        ),
-
         // ── Cycle stats (female only) ─────────────────────────────────────
         if (settings.isMenstruationTracking) ...[
           const _Header('Cycle'),
@@ -399,31 +382,52 @@ class _SettingsScreenState extends State<SettingsScreen> {
           onTap: _resetData,
         ),
 
-        // ── Debug ─────────────────────────────────────────────────────────
-        const _Header('Debug'),
-        ListTile(
-          leading: _isSeeding
-              ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.science_outlined),
-          title: const Text('Seed test data'),
-          subtitle: const Text(
-              'Insert 60 synthetic entries for Analytics testing'),
-          onTap: _isSeeding ? null : _seedTestData,
-        ),
-
         // ── About ─────────────────────────────────────────────────────────
         const _Header('About'),
         ListTile(
           leading: const Icon(Icons.info_outline),
-          title: const Text('About sarAPP'),
+          title: const Text('About sarapp'),
           subtitle: const Text('What this app is and how it works'),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const AboutScreen()),
+          ),
+        ),
+
+        // ── Advanced (collapsed by default) ─────────────────────────────────
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: ExpansionTile(
+            leading: const Icon(Icons.build_outlined),
+            title: const Text('Advanced'),
+            subtitle: const Text('Nerd mode & developer tools'),
+            initiallyExpanded: false,
+            children: [
+              SwitchListTile(
+                secondary: const Icon(Icons.science_outlined),
+                title: const Text('Nerd mode'),
+                subtitle:
+                    const Text('Show statistical details on association cards'),
+                value: settings.analyticsNerdMode,
+                onChanged: (v) => context
+                    .read<SettingsProvider>()
+                    .update(settings.copyWith(analyticsNerdMode: v)),
+              ),
+              ListTile(
+                leading: _isSeeding
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.science_outlined),
+                title: const Text('Seed test data'),
+                subtitle: const Text(
+                    'Insert 60 synthetic entries for Analytics testing'),
+                onTap: _isSeeding ? null : _seedTestData,
+              ),
+            ],
           ),
         ),
       ],
@@ -587,8 +591,8 @@ class _PhaseRow extends StatelessWidget {
 Widget _StartDayOption(
   BuildContext ctx, {
   required String label,
-  required String? value,
-  required String? current,
+  required String value,
+  required String current,
 }) =>
     SimpleDialogOption(
       onPressed: () => Navigator.pop(ctx, value),
