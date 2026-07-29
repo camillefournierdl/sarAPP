@@ -1,9 +1,12 @@
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/app_settings.dart';
 import '../../models/entry.dart';
 import '../../providers/entries_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../services/backup_service.dart';
 import '../../services/cycle_service.dart';
 import '../../services/database_service.dart';
 import '../../services/export_service.dart';
@@ -31,6 +34,69 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     final settings = context.read<SettingsProvider>().settings;
     await ExportService.exportToCsv(entries, settings);
+  }
+
+  Future<void> _exportBackup() async {
+    final entries = context.read<EntriesProvider>().entries;
+    final settings = context.read<SettingsProvider>().settings;
+    await BackupService.exportToJson(entries, settings);
+  }
+
+  Future<void> _importBackup() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['json'],
+    );
+    final path = result?.files.single.path;
+    if (path == null) return;
+
+    BackupData data;
+    try {
+      final content = await File(path).readAsString();
+      data = BackupService.parseBackup(content);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not read this backup file.')),
+      );
+      return;
+    }
+
+    if (!mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Import backup?'),
+        content: Text(
+            'This will import ${data.entries.length} entries and restore '
+            'your modules, options, and preferences from the backup.\n\n'
+            'Entries already logged on the same dates will be overwritten. '
+            'This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Import'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    for (final entry in data.entries) {
+      await DatabaseService.upsertEntry(entry);
+    }
+    await context.read<EntriesProvider>().load();
+    if (!mounted) return;
+    await context.read<SettingsProvider>().update(data.settings);
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Imported ${data.entries.length} entries.')),
+    );
   }
 
   String _startDayLabel(String pref) => pref == 'sunday' ? 'Sunday' : 'Monday';
@@ -408,7 +474,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 secondary: const Icon(Icons.science_outlined),
                 title: const Text('Nerd mode'),
                 subtitle:
-                    const Text('Show statistical details on association cards'),
+                    const Text('Show statistical details in analytics'),
                 value: settings.analyticsNerdMode,
                 onChanged: (v) => context
                     .read<SettingsProvider>()
@@ -426,6 +492,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 subtitle: const Text(
                     'Insert 60 synthetic entries for Analytics testing'),
                 onTap: _isSeeding ? null : _seedTestData,
+              ),
+              ListTile(
+                leading: const Icon(Icons.backup_outlined),
+                title: const Text('Backup data (JSON)'),
+                subtitle: const Text(
+                    'Full backup — use to move to a new install'),
+                onTap: _exportBackup,
+              ),
+              ListTile(
+                leading: const Icon(Icons.restore_outlined),
+                title: const Text('Import backup'),
+                subtitle: const Text(
+                    'Restore entries and settings from a JSON backup'),
+                onTap: _importBackup,
               ),
             ],
           ),

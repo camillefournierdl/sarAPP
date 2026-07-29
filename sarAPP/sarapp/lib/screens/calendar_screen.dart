@@ -290,8 +290,13 @@ class _MoodCalendarTabState extends State<_MoodCalendarTab> {
             ? _happinessColor(entry.happinessScore as int)
             : null;
       } else {
-        // Emotion filter mode: full color if selected, faint grey if not
-        return (entry.emotions as List).contains(_filterEmotion)
+        // Emotion filter mode: full color if selected, faint grey if not.
+        // Entries may store either the short key ('angry') or the display
+        // label ('😤 Angry') depending on when they were logged, so check both.
+        final emotions = entry.emotions as List;
+        final matches = emotions.contains(_filterEmotion) ||
+            emotions.contains(emotionLabel(_filterEmotion!));
+        return matches
             ? emotionColor(_filterEmotion!)
             : Colors.grey.withAlpha(40);
       }

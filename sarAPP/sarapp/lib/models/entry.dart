@@ -165,6 +165,64 @@ class Entry {
         createdAt: map['created_at'] as String,
       );
 
+  /// JSON-native form (lists/maps as-is, not the double-encoded strings
+  /// [toMap] uses for SQLite columns) — for use in the JSON backup file.
+  Map<String, dynamic> toJson() => {
+        'date': date,
+        'emotions': emotions,
+        'cyclePhase': cyclePhase,
+        'periodStart': periodStart,
+        'periodEnd': periodEnd,
+        'symptoms': symptoms,
+        'happinessScore': happinessScore,
+        'sleepScore': sleepScore,
+        'stressScore': stressScore,
+        'weatherScore': weatherScore,
+        'workDay': workDay,
+        'foods': foods,
+        'sports': sports,
+        'leisure': leisure,
+        'healthStatus': healthStatus,
+        'sickTags': sickTags,
+        'notes': notes,
+        'libidoScore': libidoScore,
+        'hadSex': hadSex,
+        'waterGlasses': waterGlasses,
+        'customData': customData,
+        'answeredModules': answeredModules.toList(),
+        'createdAt': createdAt,
+      };
+
+  /// No `id` field — a restored entry gets a fresh id assigned by SQLite,
+  /// matching how [toMap]/upsertEntry already discard the source id.
+  factory Entry.fromJson(Map<String, dynamic> j) => Entry(
+        date: j['date'] as String,
+        emotions: List<String>.from(j['emotions'] as List? ?? const []),
+        cyclePhase: j['cyclePhase'] as String?,
+        periodStart: j['periodStart'] as bool? ?? false,
+        periodEnd: j['periodEnd'] as bool? ?? false,
+        symptoms: List<String>.from(j['symptoms'] as List? ?? const []),
+        happinessScore: j['happinessScore'] as int?,
+        sleepScore: j['sleepScore'] as int?,
+        stressScore: j['stressScore'] as int?,
+        weatherScore: j['weatherScore'] as int?,
+        workDay: j['workDay'] as String?,
+        foods: List<String>.from(j['foods'] as List? ?? const []),
+        sports: List<String>.from(j['sports'] as List? ?? const []),
+        leisure: List<String>.from(j['leisure'] as List? ?? const []),
+        healthStatus: j['healthStatus'] as String?,
+        sickTags: List<String>.from(j['sickTags'] as List? ?? const []),
+        notes: j['notes'] as String? ?? '',
+        libidoScore: j['libidoScore'] as int?,
+        hadSex: j['hadSex'] as String?,
+        waterGlasses: j['waterGlasses'] as int?,
+        customData: Map<String, dynamic>.from(
+            j['customData'] as Map? ?? const {}),
+        answeredModules:
+            Set<String>.from(j['answeredModules'] as List? ?? const []),
+        createdAt: j['createdAt'] as String? ?? DateTime.now().toIso8601String(),
+      );
+
   /// True if the entry contains at least one piece of logged data.
   bool get hasData =>
       emotions.isNotEmpty ||
