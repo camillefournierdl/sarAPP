@@ -1,6 +1,9 @@
 import 'app_module.dart';
 import 'custom_module.dart';
 
+/// Marks a nullable [AppSettings.copyWith] argument as "not provided".
+const _sentinel = Object();
+
 class AppSettings {
   final bool menstruationTracking;
   final int notificationHour;
@@ -60,7 +63,7 @@ class AppSettings {
     this.customModuleQuestions = const {},
     this.moduleOrder = const [
       'happiness', 'emotions', 'sleep', 'stress', 'weather',
-      'health', 'work', 'sports', 'leisure', 'food', 'water',
+      'health', 'work', 'sports', 'leisure', 'food', 'substances', 'water',
       'symptoms', 'libido', 'sex', 'notes',
     ],
     this.analyticsNerdMode = false,
@@ -112,7 +115,7 @@ class AppSettings {
     int? notificationMinute,
     bool? notificationsEnabled,
     bool? onboardingComplete,
-    String? lastPeriodStart,
+    Object? lastPeriodStart = _sentinel,
     Set<String>? enabledModules,
     String? calendarStartDay,
     bool? showHighFertility,
@@ -135,7 +138,9 @@ class AppSettings {
         notificationMinute: notificationMinute ?? this.notificationMinute,
         notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
         onboardingComplete: onboardingComplete ?? this.onboardingComplete,
-        lastPeriodStart: lastPeriodStart ?? this.lastPeriodStart,
+        lastPeriodStart: identical(lastPeriodStart, _sentinel)
+            ? this.lastPeriodStart
+            : lastPeriodStart as String?,
         enabledModules: enabledModules ?? this.enabledModules,
         calendarStartDay: calendarStartDay ?? this.calendarStartDay,
         showHighFertility: showHighFertility ?? this.showHighFertility,

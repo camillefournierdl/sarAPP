@@ -210,20 +210,14 @@ class _CycleCalendarTabState extends State<_CycleCalendarTab> {
               final existing = context
                   .read<EntriesProvider>()
                   .getByDate(dateStr);
-              final updated = Entry.create(
-                date: dateStr,
-                emotions: existing?.emotions ?? [],
-                cyclePhase: existing?.cyclePhase,
-                periodStart: periodStart,
-                periodEnd: periodEnd,
-                symptoms: existing?.symptoms ?? [],
-                happinessScore: existing?.happinessScore,
-                sleepScore: existing?.sleepScore,
-                foods: existing?.foods ?? [],
-                sports: existing?.sports ?? [],
-                leisure: existing?.leisure ?? [],
-                notes: existing?.notes ?? '',
-              );
+              final updated = existing != null
+                  ? existing.copyWith(
+                      periodStart: periodStart, periodEnd: periodEnd)
+                  : Entry.create(
+                      date: dateStr,
+                      periodStart: periodStart,
+                      periodEnd: periodEnd,
+                    );
               await context.read<EntriesProvider>().saveEntry(updated);
             },
           ),

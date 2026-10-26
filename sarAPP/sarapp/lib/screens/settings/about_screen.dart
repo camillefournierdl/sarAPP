@@ -60,6 +60,17 @@ class AboutScreen extends StatelessWidget {
                 'inspect exactly what it does, contribute improvements, or '
                 'adapt it for your own needs.',
           ),
+          const SizedBox(height: 20),
+          _AboutSection(
+            icon: Icons.health_and_safety_outlined,
+            title: 'Not medical advice',
+            body:
+                'Cycle phases and fertile days shown in sarapp are estimates '
+                'based on what you log. They are not reliable enough to use '
+                'as contraception or to plan a pregnancy, and sarapp is not a '
+                'medical device. Talk to a healthcare professional about any '
+                'health concerns.',
+          ),
           const SizedBox(height: 32),
 
           Center(

@@ -14,6 +14,7 @@ class Entry {
   final int? weatherScore;   // 0–10, null = not answered
   final String? workDay;     // 'off' | 'half' | 'full' | null = not answered
   final List<String> foods; // e.g. ['gluten', 'lactose']
+  final List<String> substances; // e.g. ['🍷 Alcohol', '☕ Caffeine']
   final List<String> sports; // e.g. ['🏋️ Weight lifting', '🏃 Intense cardio']
   final List<String> leisure; // e.g. ['📖 Reading', '🎮 Gaming']
   final String? healthStatus;   // 'healthy' | 'sick' | null = not answered
@@ -40,6 +41,7 @@ class Entry {
     this.weatherScore,
     this.workDay,
     this.foods = const [],
+    this.substances = const [],
     this.sports = const [],
     this.leisure = const [],
     this.healthStatus,
@@ -66,6 +68,7 @@ class Entry {
     int? weatherScore,
     String? workDay,
     List<String> foods = const [],
+    List<String> substances = const [],
     List<String> sports = const [],
     List<String> leisure = const [],
     String? healthStatus,
@@ -90,6 +93,7 @@ class Entry {
         weatherScore: weatherScore,
         workDay: workDay,
         foods: foods,
+        substances: substances,
         sports: sports,
         leisure: leisure,
         healthStatus: healthStatus,
@@ -101,6 +105,35 @@ class Entry {
         customData: customData,
         answeredModules: answeredModules,
         createdAt: DateTime.now().toIso8601String(),
+      );
+
+  /// Returns a copy with the period flags changed; all other data is kept.
+  Entry copyWith({bool? periodStart, bool? periodEnd}) => Entry(
+        id: id,
+        date: date,
+        emotions: emotions,
+        cyclePhase: cyclePhase,
+        periodStart: periodStart ?? this.periodStart,
+        periodEnd: periodEnd ?? this.periodEnd,
+        symptoms: symptoms,
+        happinessScore: happinessScore,
+        sleepScore: sleepScore,
+        stressScore: stressScore,
+        weatherScore: weatherScore,
+        workDay: workDay,
+        foods: foods,
+        substances: substances,
+        sports: sports,
+        leisure: leisure,
+        healthStatus: healthStatus,
+        sickTags: sickTags,
+        notes: notes,
+        libidoScore: libidoScore,
+        hadSex: hadSex,
+        waterGlasses: waterGlasses,
+        customData: customData,
+        answeredModules: answeredModules,
+        createdAt: createdAt,
       );
 
   Map<String, dynamic> toMap() => {
@@ -117,6 +150,7 @@ class Entry {
         'weather_score': weatherScore,
         'work_day': workDay,
         'foods': jsonEncode(foods),
+        'substances': jsonEncode(substances),
         'sports': jsonEncode(sports),
         'leisure': jsonEncode(leisure),
         'health_status': healthStatus,
@@ -147,6 +181,8 @@ class Entry {
         workDay: map['work_day'] as String?,
         foods: List<String>.from(
             jsonDecode(map['foods'] as String? ?? '[]')),
+        substances: List<String>.from(
+            jsonDecode(map['substances'] as String? ?? '[]')),
         sports: List<String>.from(
             jsonDecode(map['sports'] as String? ?? map['activities'] as String? ?? '[]')),
         leisure: List<String>.from(
@@ -180,6 +216,7 @@ class Entry {
         'weatherScore': weatherScore,
         'workDay': workDay,
         'foods': foods,
+        'substances': substances,
         'sports': sports,
         'leisure': leisure,
         'healthStatus': healthStatus,
@@ -208,6 +245,7 @@ class Entry {
         weatherScore: j['weatherScore'] as int?,
         workDay: j['workDay'] as String?,
         foods: List<String>.from(j['foods'] as List? ?? const []),
+        substances: List<String>.from(j['substances'] as List? ?? const []),
         sports: List<String>.from(j['sports'] as List? ?? const []),
         leisure: List<String>.from(j['leisure'] as List? ?? const []),
         healthStatus: j['healthStatus'] as String?,
@@ -234,6 +272,7 @@ class Entry {
       sports.isNotEmpty ||
       leisure.isNotEmpty ||
       foods.isNotEmpty ||
+      substances.isNotEmpty ||
       symptoms.isNotEmpty ||
       healthStatus != null ||
       notes.isNotEmpty ||

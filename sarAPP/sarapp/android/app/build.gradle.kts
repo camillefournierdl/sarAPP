@@ -52,10 +52,9 @@ android {
 
     buildTypes {
         release {
-            signingConfig = if (keystorePropertiesFile.exists()) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
+            // No debug-key fallback: see the taskGraph check below.
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
             }
             isMinifyEnabled = true
             proguardFiles(
@@ -63,6 +62,17 @@ android {
                 "proguard-rules.pro"
             )
         }
+    }
+}
+
+// Fail release builds without the upload key instead of silently signing
+// with the debug key (Play rejects those, and users couldn't update later).
+gradle.taskGraph.whenReady {
+    if (!keystorePropertiesFile.exists() &&
+        allTasks.any { it.name.contains("Release") }) {
+        throw GradleException(
+            "android/key.properties not found: release builds must be signed with the upload key."
+        )
     }
 }
 

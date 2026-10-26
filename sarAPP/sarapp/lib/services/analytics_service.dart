@@ -157,6 +157,9 @@ class AnalyticsService {
       case 'food':
         if (!listAnswered(e.foods)) return null;
         return e.foods.contains(tag);
+      case 'substances':
+        if (!listAnswered(e.substances)) return null;
+        return e.substances.contains(tag);
       case 'symptoms':
         if (!listAnswered(e.symptoms)) return null;
         return e.symptoms.contains(tag);

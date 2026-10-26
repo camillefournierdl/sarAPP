@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/app_settings.dart';
@@ -10,7 +11,6 @@ import '../../services/backup_service.dart';
 import '../../services/cycle_service.dart';
 import '../../services/database_service.dart';
 import '../../services/export_service.dart';
-import '../../services/notification_service.dart';
 import 'about_screen.dart';
 import 'modules_screen.dart';
 
@@ -86,9 +86,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     if (confirmed != true || !mounted) return;
 
-    for (final entry in data.entries) {
-      await DatabaseService.upsertEntry(entry);
-    }
+    await DatabaseService.upsertEntries(data.entries);
+    if (!mounted) return;
     await context.read<EntriesProvider>().load();
     if (!mounted) return;
     await context.read<SettingsProvider>().update(data.settings);
@@ -130,16 +129,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final settings = context.read<SettingsProvider>().settings;
     final hour = time?.hour ?? settings.notificationHour;
     final minute = time?.minute ?? settings.notificationMinute;
-    await context
+    final ok = await context
         .read<SettingsProvider>()
         .setNotification(enabled: enabled, hour: hour, minute: minute);
-    if (enabled) {
-      final granted = await NotificationService.requestPermission();
-      if (!granted || !mounted) return;
-      await NotificationService.scheduleDailyReminder(hour, minute);
-    } else {
-      await NotificationService.cancelAll();
-    }
+    if (ok || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+          content: Text(
+              'Notifications are blocked. Allow them in system settings to get reminders.')),
+    );
   }
 
   Future<void> _pickTime() async {
@@ -480,7 +478,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     .read<SettingsProvider>()
                     .update(settings.copyWith(analyticsNerdMode: v)),
               ),
-              ListTile(
+              // Overwrites real entries, so never offered in release builds.
+              if (kDebugMode) ListTile(
                 leading: _isSeeding
                     ? const SizedBox(
                         width: 24,

@@ -52,7 +52,12 @@ class NotificationService {
     }
 
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const ios = DarwinInitializationSettings();
+    // Don't prompt at launch; permission is requested when reminders are enabled.
+    const ios = DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
     await _plugin.initialize(
       const InitializationSettings(android: android, iOS: ios, macOS: ios),
       onDidReceiveNotificationResponse: _onTap,
@@ -97,7 +102,14 @@ class NotificationService {
   }
 
   static Future<bool> requestPermission() async {
-    if (!Platform.isAndroid && !Platform.isIOS) return false;
+    if (Platform.isIOS) {
+      final ios = _plugin.resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin>();
+      return await ios?.requestPermissions(
+              alert: true, badge: true, sound: true) ??
+          false;
+    }
+    if (!Platform.isAndroid) return false;
     final android = _plugin
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();

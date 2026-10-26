@@ -35,6 +35,7 @@ class DatabaseService {
             weather_score    INTEGER,
             work_day         TEXT,
             foods            TEXT    NOT NULL DEFAULT '[]',
+            substances       TEXT    NOT NULL DEFAULT '[]',
             activities       TEXT    NOT NULL DEFAULT '[]',
             sports           TEXT    NOT NULL DEFAULT '[]',
             leisure          TEXT    NOT NULL DEFAULT '[]',
@@ -134,8 +135,13 @@ class DatabaseService {
           await db.execute(
               "ALTER TABLE entries ADD COLUMN answered_modules TEXT NOT NULL DEFAULT '[]'");
         }
+        // v12 → v13: add substances column
+        if (oldVersion < 13) {
+          await db.execute(
+              "ALTER TABLE entries ADD COLUMN substances TEXT NOT NULL DEFAULT '[]'");
+        }
       },
-      version: 12,
+      version: 13,
     );
   }
 
@@ -148,6 +154,20 @@ class DatabaseService {
     map.remove('id'); // let SQLite assign the id on insert; REPLACE handles updates
     await db.insert('entries', map,
         conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  /// Upserts [entries] in one transaction, so either all are saved or none.
+  static Future<void> upsertEntries(List<Entry> entries) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      final batch = txn.batch();
+      for (final entry in entries) {
+        final map = entry.toMap()..remove('id');
+        batch.insert('entries', map,
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      await batch.commit(noResult: true);
+    });
   }
 
   static Future<List<Entry>> getAllEntries() async {
@@ -179,11 +199,6 @@ class DatabaseService {
     final db = await database;
     await db.insert('settings', {'key': key, 'value': value},
         conflictAlgorithm: ConflictAlgorithm.replace);
-  }
-
-  static Future<void> _deleteSetting(String key) async {
-    final db = await database;
-    await db.delete('settings', where: 'key = ?', whereArgs: [key]);
   }
 
   /// Parses a JSON-encoded list of module keys, falling back to defaults.
@@ -223,7 +238,7 @@ class DatabaseService {
   static List<String> _parseModuleOrder(String? raw) {
     const defaultOrder = [
       'happiness', 'emotions', 'sleep', 'stress', 'weather',
-      'health', 'work', 'sports', 'leisure', 'food', 'water',
+      'health', 'work', 'sports', 'leisure', 'food', 'substances', 'water',
       'symptoms', 'libido', 'sex', 'notes',
     ];
     if (raw == null) return defaultOrder;
@@ -382,36 +397,43 @@ class DatabaseService {
   }
 
   static Future<void> saveSettings(AppSettings s) async {
-    await _saveSetting('menstruation_tracking', s.menstruationTracking.toString());
-    await _saveSetting('notification_hour', s.notificationHour.toString());
-    await _saveSetting('notification_minute', s.notificationMinute.toString());
-    await _saveSetting(
-        'notifications_enabled', s.notificationsEnabled.toString());
-    await _saveSetting('onboarding_complete', s.onboardingComplete.toString());
-    await _saveSetting('enabled_modules', jsonEncode(s.enabledModules.toList()));
-    await _saveSetting('show_high_fertility', s.showHighFertility.toString());
-    await _saveSetting('show_last_sex', s.showLastSex.toString());
-    await _saveSetting('module_options',
-        jsonEncode(s.moduleOptions.map((k, v) => MapEntry(k, v))));
-    await _saveSetting('user_modified_module_options',
-        jsonEncode(s.userModifiedModuleOptions.toList()));
-    await _saveSetting('module_label_low', jsonEncode(s.moduleLabelLow));
-    await _saveSetting('module_label_high', jsonEncode(s.moduleLabelHigh));
-    await _saveSetting('module_conditional_options',
-        jsonEncode(s.moduleConditionalOptions.map((k, v) => MapEntry(k, v))));
-    await _saveSetting('module_conditional_trigger', jsonEncode(s.moduleConditionalTrigger));
-    await _saveSetting('module_conditional_question', jsonEncode(s.moduleConditionalQuestion));
-    await _saveSetting('custom_modules',
-        jsonEncode(s.customModules.map((m) => m.toJson()).toList()));
-    await _saveSetting('custom_module_questions',
-        jsonEncode(s.customModuleQuestions));
-    await _saveSetting('module_order', jsonEncode(s.moduleOrder));
-    await _saveSetting('analytics_nerd_mode', s.analyticsNerdMode.toString());
-    await _saveSetting('calendar_start_day', s.calendarStartDay);
-    if (s.lastPeriodStart != null) {
-      await _saveSetting('last_period_start', s.lastPeriodStart!);
-    } else {
-      await _deleteSetting('last_period_start');
-    }
+    final values = <String, String>{
+      'menstruation_tracking': s.menstruationTracking.toString(),
+      'notification_hour': s.notificationHour.toString(),
+      'notification_minute': s.notificationMinute.toString(),
+      'notifications_enabled': s.notificationsEnabled.toString(),
+      'onboarding_complete': s.onboardingComplete.toString(),
+      'enabled_modules': jsonEncode(s.enabledModules.toList()),
+      'show_high_fertility': s.showHighFertility.toString(),
+      'show_last_sex': s.showLastSex.toString(),
+      'module_options': jsonEncode(s.moduleOptions),
+      'user_modified_module_options':
+          jsonEncode(s.userModifiedModuleOptions.toList()),
+      'module_label_low': jsonEncode(s.moduleLabelLow),
+      'module_label_high': jsonEncode(s.moduleLabelHigh),
+      'module_conditional_options': jsonEncode(s.moduleConditionalOptions),
+      'module_conditional_trigger': jsonEncode(s.moduleConditionalTrigger),
+      'module_conditional_question': jsonEncode(s.moduleConditionalQuestion),
+      'custom_modules':
+          jsonEncode(s.customModules.map((m) => m.toJson()).toList()),
+      'custom_module_questions': jsonEncode(s.customModuleQuestions),
+      'module_order': jsonEncode(s.moduleOrder),
+      'analytics_nerd_mode': s.analyticsNerdMode.toString(),
+      'calendar_start_day': s.calendarStartDay,
+      if (s.lastPeriodStart != null) 'last_period_start': s.lastPeriodStart!,
+    };
+    final db = await database;
+    // One transaction so a failure can't leave settings half-written.
+    await db.transaction((txn) async {
+      final batch = txn.batch();
+      values.forEach((key, value) => batch.insert(
+          'settings', {'key': key, 'value': value},
+          conflictAlgorithm: ConflictAlgorithm.replace));
+      if (s.lastPeriodStart == null) {
+        batch.delete('settings',
+            where: 'key = ?', whereArgs: ['last_period_start']);
+      }
+      await batch.commit(noResult: true);
+    });
   }
 }

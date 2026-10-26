@@ -10,7 +10,6 @@ import '../widgets/chip_selector.dart';
 import '../widgets/emotion_tag_selector.dart';
 import '../widgets/scale_slider.dart';
 import '../models/app_settings.dart';
-import '../models/app_settings.dart';
 
 class LogEntryScreen extends StatefulWidget {
   final Entry? existing;
@@ -35,6 +34,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
   int? _weatherScore;
   String? _workDay;
   late List<String> _foods;
+  late List<String> _substances;
   late List<String> _sports;
   late List<String> _leisure;
   String? _healthStatus;
@@ -67,6 +67,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
     _weatherScore = e?.weatherScore;
     _workDay = e?.workDay;
     _foods = List.from(e?.foods ?? []);
+    _substances = List.from(e?.substances ?? []);
     _sports = List.from(e?.sports ?? []);
     _leisure = List.from(e?.leisure ?? []);
     _healthStatus = e?.healthStatus;
@@ -118,6 +119,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
       weatherScore: _weatherScore,
       workDay: _workDay,
       foods: _foods,
+      substances: _substances,
       sports: _sports,
       leisure: _leisure,
       healthStatus: _healthStatus,
@@ -238,6 +240,12 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
           options: settings.optionsFor('food'),
           selected: _foods,
           onChanged: (v) => setState(() => _foods = v),
+        );
+      case 'substances':
+        child = ChipSelector(
+          options: settings.optionsFor('substances'),
+          selected: _substances,
+          onChanged: (v) => setState(() => _substances = v),
         );
       case 'symptoms':
         child = ChipSelector(
