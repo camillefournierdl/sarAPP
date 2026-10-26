@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../feature_flags.dart';
 import '../../models/app_settings.dart';
 import '../../models/entry.dart';
 import '../../providers/entries_provider.dart';
@@ -446,6 +446,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
           onTap: _resetData,
         ),
 
+        // ── Analytics (placeholder until the feature ships) ──────────────
+        if (!kAnalyticsEnabled) ...[
+          const _Header('Analytics'),
+          const SwitchListTile(
+            secondary: Icon(Icons.insights),
+            title: Text('Insights & correlations'),
+            subtitle: Text(
+                'Coming in a future version: see how your mood, sleep and '
+                'symptoms relate to each other.'),
+            value: false,
+            onChanged: null,
+          ),
+        ],
+
         // ── About ─────────────────────────────────────────────────────────
         const _Header('About'),
         ListTile(
@@ -465,10 +479,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: ExpansionTile(
             leading: const Icon(Icons.build_outlined),
             title: const Text('Advanced'),
-            subtitle: const Text('Nerd mode & developer tools'),
+            subtitle: Text(kAnalyticsEnabled
+                ? 'Nerd mode, developer tools & backup'
+                : 'Backup & restore'),
             initiallyExpanded: false,
             children: [
-              SwitchListTile(
+              if (kAnalyticsEnabled) SwitchListTile(
                 secondary: const Icon(Icons.science_outlined),
                 title: const Text('Nerd mode'),
                 subtitle:
@@ -478,8 +494,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     .read<SettingsProvider>()
                     .update(settings.copyWith(analyticsNerdMode: v)),
               ),
-              // Overwrites real entries, so never offered in release builds.
-              if (kDebugMode) ListTile(
+              // Overwrites real entries, so only offered in test releases.
+              if (kAnalyticsEnabled) ListTile(
                 leading: _isSeeding
                     ? const SizedBox(
                         width: 24,
