@@ -1,7 +1,7 @@
 name: sarapp
 description: "Mood and cycle tracker"
 publish_to: 'none'
-version: 0.1.0+1
+version: 0.1.2+3
 
 environment:
   sdk: ^3.11.4
@@ -28,6 +28,11 @@ dependencies:
   csv: ^6.0.0
   path_provider: ^2.1.4
   share_plus: ^9.0.0
+
+  # JSON backup import (file picker for restore)
+  # Pinned below 8.1.0: newer file_picker needs web ^1.0.0, which conflicts
+  # with share_plus 9.0.0's web ^0.5.0 requirement.
+  file_picker: ^8.0.7
 
   # Date formatting
   intl: ^0.19.0

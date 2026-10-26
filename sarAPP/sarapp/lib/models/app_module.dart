@@ -118,12 +118,21 @@ class AppModule {
       '🌾 Gluten', '🥛 Lactose', '🍬 Sugars', '🍗 Chicken', '🐟 Fish',
     ],
   );
+  static const substances = AppModule(
+    key: 'substances',
+    label: 'Substances',
+    description: 'Alcohol, caffeine, nicotine & more',
+    emoji: '🍷',
+    responseType: ResponseType.multiSelect,
+    defaultOptions: [
+      '🍷 Alcohol', '☕ Caffeine', '🚬 Nicotine', '🌿 Cannabis', '💊 Medication',
+    ],
+  );
   static const symptoms = AppModule(
     key: 'symptoms',
     label: 'Symptoms',
     description: 'Chronic symptom tracking',
     emoji: '🩺',
-    menstruationOnly: true,
     responseType: ResponseType.multiSelect,
     defaultOptions: [
       'cramps', 'bloating', 'headache', 'fatigue', 'mood swings',
@@ -194,6 +203,7 @@ class AppModule {
     sports,
     leisure,
     food,
+    substances,
     symptoms,
     libido,
     sex,

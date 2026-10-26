@@ -71,6 +71,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   labelColor: Theme.of(context).colorScheme.primary,
                 ),
               ),
+              // Cycle-phase help, only on the Cycle tab. maintainSize keeps
+              // the TabBar width stable when switching tabs.
+              Builder(builder: (context) {
+                final controller = DefaultTabController.of(context);
+                return AnimatedBuilder(
+                  animation: controller,
+                  builder: (context, _) => Visibility(
+                    visible: controller.index == 0,
+                    maintainSize: true,
+                    maintainAnimation: true,
+                    maintainState: true,
+                    child: IconButton(
+                      icon: const Icon(Icons.help_outline),
+                      tooltip: 'About cycle phases',
+                      onPressed: () => _showCycleInfo(context),
+                    ),
+                  ),
+                );
+              }),
               todayButton,
             ],
           ),
@@ -210,20 +229,14 @@ class _CycleCalendarTabState extends State<_CycleCalendarTab> {
               final existing = context
                   .read<EntriesProvider>()
                   .getByDate(dateStr);
-              final updated = Entry.create(
-                date: dateStr,
-                emotions: existing?.emotions ?? [],
-                cyclePhase: existing?.cyclePhase,
-                periodStart: periodStart,
-                periodEnd: periodEnd,
-                symptoms: existing?.symptoms ?? [],
-                happinessScore: existing?.happinessScore,
-                sleepScore: existing?.sleepScore,
-                foods: existing?.foods ?? [],
-                sports: existing?.sports ?? [],
-                leisure: existing?.leisure ?? [],
-                notes: existing?.notes ?? '',
-              );
+              final updated = existing != null
+                  ? existing.copyWith(
+                      periodStart: periodStart, periodEnd: periodEnd)
+                  : Entry.create(
+                      date: dateStr,
+                      periodStart: periodStart,
+                      periodEnd: periodEnd,
+                    );
               await context.read<EntriesProvider>().saveEntry(updated);
             },
           ),
@@ -290,8 +303,13 @@ class _MoodCalendarTabState extends State<_MoodCalendarTab> {
             ? _happinessColor(entry.happinessScore as int)
             : null;
       } else {
-        // Emotion filter mode: full color if selected, faint grey if not
-        return (entry.emotions as List).contains(_filterEmotion)
+        // Emotion filter mode: full color if selected, faint grey if not.
+        // Entries may store either the short key ('angry') or the display
+        // label ('😤 Angry') depending on when they were logged, so check both.
+        final emotions = entry.emotions as List;
+        final matches = emotions.contains(_filterEmotion) ||
+            emotions.contains(emotionLabel(_filterEmotion!));
+        return matches
             ? emotionColor(_filterEmotion!)
             : Colors.grey.withAlpha(40);
       }
@@ -734,6 +752,171 @@ class _LegendDot extends StatelessWidget {
 }
 
 // ── Instruction banner ─────────────────────────────────────────────────────────
+
+// ── Cycle info sheet ───────────────────────────────────────────────────────────
+
+void _showCycleInfo(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (_) => DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.75,
+      maxChildSize: 0.95,
+      builder: (context, scrollController) =>
+          _CycleInfoSheet(scrollController: scrollController),
+    ),
+  );
+}
+
+class _CycleInfoSheet extends StatelessWidget {
+  final ScrollController scrollController;
+  const _CycleInfoSheet({required this.scrollController});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.textTheme.bodyMedium
+        ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+
+    return ListView(
+      controller: scrollController,
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+      children: [
+        Text('The menstrual cycle',
+            style: theme.textTheme.titleLarge
+                ?.copyWith(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        Text(
+          'A cycle starts on the first day of your period and ends the day '
+          'before the next one. On average it lasts about 28 days, but '
+          'anywhere between 21 and 35 days is common.',
+          style: muted,
+        ),
+        const SizedBox(height: 20),
+        const _PhaseInfo(
+          phase: 'menstruation',
+          title: 'Menstruation',
+          duration: 'About 3–7 days',
+          body: 'Your period: the lining of the uterus is shed. Energy can '
+              'be lower and cramps are common.',
+        ),
+        const _PhaseInfo(
+          phase: 'follicular',
+          title: 'Follicular phase',
+          duration: 'About 7–14 days after your period',
+          body: 'Hormone levels (oestrogen) rise as the body prepares to '
+              'release an egg. Many people feel more energetic. This is the '
+              'phase whose length varies the most, which is why cycle lengths '
+              'differ.',
+        ),
+        const _PhaseInfo(
+          phase: 'high_fertility',
+          title: 'Higher fertility window',
+          duration: 'About 5 days, ending on ovulation',
+          body: 'The days when pregnancy is most likely. To show it on the '
+              'calendar, turn on "Show higher-fertility window" in Settings.',
+        ),
+        const _PhaseInfo(
+          phase: 'ovulation',
+          title: 'Ovulation',
+          duration: 'About 1 day',
+          body: 'An egg is released, usually around 14 days before the next '
+              'period (day 14 of a 28-day cycle).',
+        ),
+        const _PhaseInfo(
+          phase: 'luteal',
+          title: 'Luteal phase',
+          duration: 'About 12–14 days',
+          body: 'Progesterone rises after ovulation. Towards the end, some '
+              'people notice PMS symptoms such as bloating, mood changes or '
+              'breast tenderness. This phase is fairly stable in length.',
+        ),
+        const SizedBox(height: 8),
+        Text('Every body is different',
+            style: theme.textTheme.titleMedium
+                ?.copyWith(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 6),
+        Text(
+          'These are averages. Your own cycle may be shorter, longer or '
+          'irregular, and it can change over time with age, stress, illness, '
+          'travel, contraception, pregnancy or menopause.',
+          style: muted,
+        ),
+        const SizedBox(height: 20),
+        Text('Getting to know your cycle',
+            style: theme.textTheme.titleMedium
+                ?.copyWith(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 6),
+        Text(
+          'Mark the start and end of each period on the calendar. sarapp uses '
+          'your own history, not just the averages above, to estimate your '
+          'phases. After a few cycles, you will have a better idea of when '
+          'each phase is likely to happen for you, and how your mood, sleep '
+          'and symptoms change across your cycle.',
+          style: muted,
+        ),
+        const SizedBox(height: 20),
+        Text(
+          'Phases shown in sarapp are estimates. They are not reliable enough '
+          'to use as contraception or to plan a pregnancy.',
+          style: theme.textTheme.bodySmall
+              ?.copyWith(color: theme.colorScheme.outline),
+        ),
+      ],
+    );
+  }
+}
+
+class _PhaseInfo extends StatelessWidget {
+  final String phase;
+  final String title;
+  final String duration;
+  final String body;
+  const _PhaseInfo({
+    required this.phase,
+    required this.title,
+    required this.duration,
+    required this.body,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: CircleAvatar(
+              radius: 7,
+              backgroundColor: cyclePhaseColor(phase),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: theme.textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.bold)),
+                Text(duration,
+                    style: theme.textTheme.labelMedium
+                        ?.copyWith(color: theme.colorScheme.primary)),
+                const SizedBox(height: 2),
+                Text(body, style: theme.textTheme.bodyMedium),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _InstructionBanner extends StatelessWidget {
   final String message;

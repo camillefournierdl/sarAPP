@@ -22,11 +22,17 @@ class SettingsProvider extends ChangeNotifier {
   Future<void> setOnboardingComplete({
     required bool menstruationTracking,
     required Set<String> enabledModules,
+    Map<String, List<String>> moduleOptions = const {},
   }) async {
     await update(_settings.copyWith(
       menstruationTracking: menstruationTracking,
       onboardingComplete: true,
       enabledModules: enabledModules,
+      moduleOptions: {..._settings.moduleOptions, ...moduleOptions},
+      userModifiedModuleOptions: {
+        ..._settings.userModifiedModuleOptions,
+        ...moduleOptions.keys,
+      },
     ));
   }
 
@@ -35,39 +41,19 @@ class SettingsProvider extends ChangeNotifier {
   }
 
   /// Clears the last period start date.
-  /// Uses explicit reconstruction because copyWith can't set a field to null.
   Future<void> clearPeriodBaseline() async {
-    _settings = AppSettings(
-      menstruationTracking: _settings.menstruationTracking,
-      notificationHour: _settings.notificationHour,
-      notificationMinute: _settings.notificationMinute,
-      notificationsEnabled: _settings.notificationsEnabled,
-      onboardingComplete: _settings.onboardingComplete,
-      lastPeriodStart: null,
-      enabledModules: _settings.enabledModules,
-      calendarStartDay: _settings.calendarStartDay,
-      showHighFertility: _settings.showHighFertility,
-      showLastSex: _settings.showLastSex,
-      moduleOptions: _settings.moduleOptions,
-      moduleLabelLow: _settings.moduleLabelLow,
-      moduleLabelHigh: _settings.moduleLabelHigh,
-      moduleConditionalOptions: _settings.moduleConditionalOptions,
-      moduleConditionalTrigger: _settings.moduleConditionalTrigger,
-      moduleConditionalQuestion: _settings.moduleConditionalQuestion,
-      customModules: _settings.customModules,
-      customModuleQuestions: _settings.customModuleQuestions,
-      moduleOrder: _settings.moduleOrder,
-    );
-    await DatabaseService.saveSettings(_settings);
-    notifyListeners();
+    await update(_settings.copyWith(lastPeriodStart: null));
   }
 
-  Future<void> setNotification({
+  /// Returns false if [enabled] was requested but notification permission
+  /// was denied; reminders are then left off.
+  Future<bool> setNotification({
     required bool enabled,
     required int hour,
     required int minute,
   }) async {
     if (enabled) {
+      if (!await NotificationService.requestPermission()) return false;
       await NotificationService.scheduleDailyReminder(hour, minute);
     } else {
       await NotificationService.cancelAll();
@@ -77,5 +63,6 @@ class SettingsProvider extends ChangeNotifier {
       notificationHour: hour,
       notificationMinute: minute,
     ));
+    return true;
   }
 }

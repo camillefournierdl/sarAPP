@@ -1,13 +1,16 @@
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../feature_flags.dart';
 import '../../models/app_settings.dart';
 import '../../models/entry.dart';
 import '../../providers/entries_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../services/backup_service.dart';
 import '../../services/cycle_service.dart';
 import '../../services/database_service.dart';
 import '../../services/export_service.dart';
-import '../../services/notification_service.dart';
 import 'about_screen.dart';
 import 'modules_screen.dart';
 
@@ -31,6 +34,68 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     final settings = context.read<SettingsProvider>().settings;
     await ExportService.exportToCsv(entries, settings);
+  }
+
+  Future<void> _exportBackup() async {
+    final entries = context.read<EntriesProvider>().entries;
+    final settings = context.read<SettingsProvider>().settings;
+    await BackupService.exportToJson(entries, settings);
+  }
+
+  Future<void> _importBackup() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['json'],
+    );
+    final path = result?.files.single.path;
+    if (path == null) return;
+
+    BackupData data;
+    try {
+      final content = await File(path).readAsString();
+      data = BackupService.parseBackup(content);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not read this backup file.')),
+      );
+      return;
+    }
+
+    if (!mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Import backup?'),
+        content: Text(
+            'This will import ${data.entries.length} entries and restore '
+            'your modules, options, and preferences from the backup.\n\n'
+            'Entries already logged on the same dates will be overwritten. '
+            'This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Import'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    await DatabaseService.upsertEntries(data.entries);
+    if (!mounted) return;
+    await context.read<EntriesProvider>().load();
+    if (!mounted) return;
+    await context.read<SettingsProvider>().update(data.settings);
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Imported ${data.entries.length} entries.')),
+    );
   }
 
   String _startDayLabel(String pref) => pref == 'sunday' ? 'Sunday' : 'Monday';
@@ -64,16 +129,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final settings = context.read<SettingsProvider>().settings;
     final hour = time?.hour ?? settings.notificationHour;
     final minute = time?.minute ?? settings.notificationMinute;
-    await context
+    final ok = await context
         .read<SettingsProvider>()
         .setNotification(enabled: enabled, hour: hour, minute: minute);
-    if (enabled) {
-      final granted = await NotificationService.requestPermission();
-      if (!granted || !mounted) return;
-      await NotificationService.scheduleDailyReminder(hour, minute);
-    } else {
-      await NotificationService.cancelAll();
-    }
+    if (ok || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+          content: Text(
+              'Notifications are blocked. Allow them in system settings to get reminders.')),
+    );
   }
 
   Future<void> _pickTime() async {
@@ -382,6 +446,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
           onTap: _resetData,
         ),
 
+        // ── Analytics (placeholder until the feature ships) ──────────────
+        if (!kAnalyticsEnabled) ...[
+          const _Header('Analytics'),
+          const SwitchListTile(
+            secondary: Icon(Icons.insights),
+            title: Text('Insights & correlations'),
+            subtitle: Text(
+                'Coming in a future version: see how your mood, sleep and '
+                'symptoms relate to each other.'),
+            value: false,
+            onChanged: null,
+          ),
+        ],
+
         // ── About ─────────────────────────────────────────────────────────
         const _Header('About'),
         ListTile(
@@ -401,20 +479,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: ExpansionTile(
             leading: const Icon(Icons.build_outlined),
             title: const Text('Advanced'),
-            subtitle: const Text('Nerd mode & developer tools'),
+            subtitle: Text(kAnalyticsEnabled
+                ? 'Nerd mode, developer tools & backup'
+                : 'Backup & restore'),
             initiallyExpanded: false,
             children: [
-              SwitchListTile(
+              if (kAnalyticsEnabled) SwitchListTile(
                 secondary: const Icon(Icons.science_outlined),
                 title: const Text('Nerd mode'),
                 subtitle:
-                    const Text('Show statistical details on association cards'),
+                    const Text('Show statistical details in analytics'),
                 value: settings.analyticsNerdMode,
                 onChanged: (v) => context
                     .read<SettingsProvider>()
                     .update(settings.copyWith(analyticsNerdMode: v)),
               ),
-              ListTile(
+              // Overwrites real entries, so only offered in test releases.
+              if (kAnalyticsEnabled) ListTile(
                 leading: _isSeeding
                     ? const SizedBox(
                         width: 24,
@@ -426,6 +507,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 subtitle: const Text(
                     'Insert 60 synthetic entries for Analytics testing'),
                 onTap: _isSeeding ? null : _seedTestData,
+              ),
+              ListTile(
+                leading: const Icon(Icons.backup_outlined),
+                title: const Text('Backup data (JSON)'),
+                subtitle: const Text(
+                    'Full backup — use to move to a new install'),
+                onTap: _exportBackup,
+              ),
+              ListTile(
+                leading: const Icon(Icons.restore_outlined),
+                title: const Text('Import backup'),
+                subtitle: const Text(
+                    'Restore entries and settings from a JSON backup'),
+                onTap: _importBackup,
               ),
             ],
           ),

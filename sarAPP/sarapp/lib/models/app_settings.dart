@@ -1,6 +1,9 @@
 import 'app_module.dart';
 import 'custom_module.dart';
 
+/// Marks a nullable [AppSettings.copyWith] argument as "not provided".
+const _sentinel = Object();
+
 class AppSettings {
   final bool menstruationTracking;
   final int notificationHour;
@@ -60,7 +63,7 @@ class AppSettings {
     this.customModuleQuestions = const {},
     this.moduleOrder = const [
       'happiness', 'emotions', 'sleep', 'stress', 'weather',
-      'health', 'work', 'sports', 'leisure', 'food', 'water',
+      'health', 'work', 'sports', 'leisure', 'food', 'substances', 'water',
       'symptoms', 'libido', 'sex', 'notes',
     ],
     this.analyticsNerdMode = false,
@@ -112,7 +115,7 @@ class AppSettings {
     int? notificationMinute,
     bool? notificationsEnabled,
     bool? onboardingComplete,
-    String? lastPeriodStart,
+    Object? lastPeriodStart = _sentinel,
     Set<String>? enabledModules,
     String? calendarStartDay,
     bool? showHighFertility,
@@ -135,7 +138,9 @@ class AppSettings {
         notificationMinute: notificationMinute ?? this.notificationMinute,
         notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
         onboardingComplete: onboardingComplete ?? this.onboardingComplete,
-        lastPeriodStart: lastPeriodStart ?? this.lastPeriodStart,
+        lastPeriodStart: identical(lastPeriodStart, _sentinel)
+            ? this.lastPeriodStart
+            : lastPeriodStart as String?,
         enabledModules: enabledModules ?? this.enabledModules,
         calendarStartDay: calendarStartDay ?? this.calendarStartDay,
         showHighFertility: showHighFertility ?? this.showHighFertility,
@@ -155,6 +160,97 @@ class AppSettings {
 
   String questionFor(String moduleKey, String defaultQuestion) =>
       customModuleQuestions[moduleKey] ?? defaultQuestion;
+
+  /// For the JSON backup file — a full snapshot independent of the
+  /// key-by-key storage DatabaseService uses for the settings table.
+  Map<String, dynamic> toJson() => {
+        'menstruationTracking': menstruationTracking,
+        'notificationHour': notificationHour,
+        'notificationMinute': notificationMinute,
+        'notificationsEnabled': notificationsEnabled,
+        'onboardingComplete': onboardingComplete,
+        'lastPeriodStart': lastPeriodStart,
+        'enabledModules': enabledModules.toList(),
+        'calendarStartDay': calendarStartDay,
+        'showHighFertility': showHighFertility,
+        'showLastSex': showLastSex,
+        'moduleOptions': moduleOptions,
+        'userModifiedModuleOptions': userModifiedModuleOptions.toList(),
+        'moduleLabelLow': moduleLabelLow,
+        'moduleLabelHigh': moduleLabelHigh,
+        'moduleConditionalOptions': moduleConditionalOptions,
+        'moduleConditionalTrigger': moduleConditionalTrigger,
+        'moduleConditionalQuestion': moduleConditionalQuestion,
+        'customModules': customModules.map((m) => m.toJson()).toList(),
+        'customModuleQuestions': customModuleQuestions,
+        'moduleOrder': moduleOrder,
+        'analyticsNerdMode': analyticsNerdMode,
+      };
+
+  /// Missing keys fall back to defaults, so a backup from an older app
+  /// version (fewer fields) still restores cleanly.
+  factory AppSettings.fromJson(Map<String, dynamic> j) {
+    const fallback = AppSettings();
+    Map<String, List<String>> stringListMap(dynamic raw) =>
+        (raw as Map).map(
+            (k, v) => MapEntry(k as String, List<String>.from(v as List)));
+
+    return AppSettings(
+      menstruationTracking:
+          j['menstruationTracking'] as bool? ?? fallback.menstruationTracking,
+      notificationHour:
+          j['notificationHour'] as int? ?? fallback.notificationHour,
+      notificationMinute:
+          j['notificationMinute'] as int? ?? fallback.notificationMinute,
+      notificationsEnabled:
+          j['notificationsEnabled'] as bool? ?? fallback.notificationsEnabled,
+      onboardingComplete:
+          j['onboardingComplete'] as bool? ?? fallback.onboardingComplete,
+      lastPeriodStart: j['lastPeriodStart'] as String?,
+      enabledModules: j['enabledModules'] != null
+          ? Set<String>.from(j['enabledModules'] as List)
+          : fallback.enabledModules,
+      calendarStartDay:
+          j['calendarStartDay'] as String? ?? fallback.calendarStartDay,
+      showHighFertility:
+          j['showHighFertility'] as bool? ?? fallback.showHighFertility,
+      showLastSex: j['showLastSex'] as bool? ?? fallback.showLastSex,
+      moduleOptions: j['moduleOptions'] != null
+          ? stringListMap(j['moduleOptions'])
+          : fallback.moduleOptions,
+      userModifiedModuleOptions: j['userModifiedModuleOptions'] != null
+          ? Set<String>.from(j['userModifiedModuleOptions'] as List)
+          : fallback.userModifiedModuleOptions,
+      moduleLabelLow: j['moduleLabelLow'] != null
+          ? Map<String, String>.from(j['moduleLabelLow'] as Map)
+          : fallback.moduleLabelLow,
+      moduleLabelHigh: j['moduleLabelHigh'] != null
+          ? Map<String, String>.from(j['moduleLabelHigh'] as Map)
+          : fallback.moduleLabelHigh,
+      moduleConditionalOptions: j['moduleConditionalOptions'] != null
+          ? stringListMap(j['moduleConditionalOptions'])
+          : fallback.moduleConditionalOptions,
+      moduleConditionalTrigger: j['moduleConditionalTrigger'] != null
+          ? Map<String, String>.from(j['moduleConditionalTrigger'] as Map)
+          : fallback.moduleConditionalTrigger,
+      moduleConditionalQuestion: j['moduleConditionalQuestion'] != null
+          ? Map<String, String>.from(j['moduleConditionalQuestion'] as Map)
+          : fallback.moduleConditionalQuestion,
+      customModules: j['customModules'] != null
+          ? (j['customModules'] as List)
+              .map((e) => CustomModule.fromJson(e as Map<String, dynamic>))
+              .toList()
+          : fallback.customModules,
+      customModuleQuestions: j['customModuleQuestions'] != null
+          ? Map<String, String>.from(j['customModuleQuestions'] as Map)
+          : fallback.customModuleQuestions,
+      moduleOrder: j['moduleOrder'] != null
+          ? List<String>.from(j['moduleOrder'] as List)
+          : fallback.moduleOrder,
+      analyticsNerdMode:
+          j['analyticsNerdMode'] as bool? ?? fallback.analyticsNerdMode,
+    );
+  }
 
   /// Returns a copy with [key] toggled on or off.
   AppSettings withModuleToggled(String key) {

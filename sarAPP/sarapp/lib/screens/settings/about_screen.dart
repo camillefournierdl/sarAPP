@@ -38,7 +38,7 @@ class AboutScreen extends StatelessWidget {
             title: 'Track what you choose',
             body:
                 'sarapp lets you track different dimensions of your day. Everyone is different.'
-                'You decide what dimensions matter to you. Enable or '
+                ' You decide what dimensions matter to you. Enable or '
                 'disable any module at any time in Settings. '
                 'There is no required field.',
           ),
@@ -48,7 +48,7 @@ class AboutScreen extends StatelessWidget {
             title: 'Your data, your device',
             body:
                 'Everything you log stays on your phone. No account, no cloud '
-                'sync, (currenty) no analytics. Your data is stored locally in a private '
+                'sync. Your data is stored locally in a private '
                 'database and can be exported to a CSV whenever you want.',
           ),
           const SizedBox(height: 20),
@@ -59,6 +59,17 @@ class AboutScreen extends StatelessWidget {
                 'sarapp is free to use and its source code is open. You can '
                 'inspect exactly what it does, contribute improvements, or '
                 'adapt it for your own needs.',
+          ),
+          const SizedBox(height: 20),
+          _AboutSection(
+            icon: Icons.health_and_safety_outlined,
+            title: 'Not medical advice',
+            body:
+                'Cycle phases and fertile days shown in sarapp are estimates '
+                'based on what you log. They are not reliable enough to use '
+                'as contraception or to plan a pregnancy, and sarapp is not a '
+                'medical device. Talk to a healthcare professional about any '
+                'health concerns.',
           ),
           const SizedBox(height: 32),
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../feature_flags.dart';
 import '../models/entry.dart';
 import '../providers/entries_provider.dart';
 import '../providers/settings_provider.dart';
@@ -49,7 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _DashboardTab(),
     HistoryScreen(),
     CalendarScreen(),
-    AnalyticsScreen(),
+    if (kAnalyticsEnabled) AnalyticsScreen(),
     SettingsScreen(),
   ];
 
@@ -65,8 +66,9 @@ class _HomeScreenState extends State<HomeScreen> {
           NavigationDestination(icon: Icon(Icons.history), label: 'History'),
           NavigationDestination(
               icon: Icon(Icons.calendar_month), label: 'Calendar'),
-          NavigationDestination(
-              icon: Icon(Icons.insights), label: 'Analytics'),
+          if (kAnalyticsEnabled)
+            NavigationDestination(
+                icon: Icon(Icons.insights), label: 'Analytics'),
           NavigationDestination(
               icon: Icon(Icons.settings), label: 'Settings'),
         ],

@@ -9,6 +9,8 @@ class _UseCase {
   final String subtitle;
   final bool menstruationTracking;
   final Set<String> modules;
+  /// Preset option lists for built-in modules, overriding their defaults.
+  final Map<String, List<String>> moduleOptions;
 
   const _UseCase({
     required this.icon,
@@ -17,6 +19,7 @@ class _UseCase {
     required this.subtitle,
     required this.menstruationTracking,
     required this.modules,
+    this.moduleOptions = const {},
   });
 }
 
@@ -24,37 +27,49 @@ const _useCases = [
   _UseCase(
     icon: Icons.favorite,
     color: Color(0xFFE53935),
-    title: 'Menstrual health',
-    subtitle: 'Cycle phases, symptoms, mood & sleep',
+    title: 'Menstrual tracking',
+    subtitle: 'Cycle phases, period symptoms, mood & libido',
     menstruationTracking: true,
-    modules: {'happiness', 'emotions', 'sleep', 'health', 'symptoms', 'notes'},
+    modules: {
+      'happiness', 'emotions', 'sleep', 'symptoms', 'libido', 'health', 'notes',
+    },
+  ),
+  _UseCase(
+    icon: Icons.healing,
+    color: Color(0xFF00897B),
+    title: 'Chronic symptoms',
+    subtitle: 'Symptoms, pain, sleep, stress & possible triggers',
+    menstruationTracking: false,
+    modules: {
+      'happiness', 'sleep', 'stress', 'symptoms', 'food', 'weather',
+      'health', 'notes',
+    },
+    moduleOptions: {
+      'symptoms': [
+        '⚡ Pain', '🦴 Joint pain', '🤕 Headache / migraine', '😮‍💨 Fatigue',
+        '🌫️ Brain fog', '🤢 Nausea', '🫄 Digestive issues', '💫 Dizziness',
+        '😵 Insomnia',
+      ],
+    },
   ),
   _UseCase(
     icon: Icons.self_improvement,
     color: Color(0xFF7C4DFF),
-    title: 'Mood & wellbeing',
-    subtitle: 'Emotions, happiness, sleep & mental health',
-    menstruationTracking: false,
-    modules: {'happiness', 'emotions', 'sleep', 'health', 'notes'},
-  ),
-  _UseCase(
-    icon: Icons.directions_run,
-    color: Color(0xFF00897B),
-    title: 'Active lifestyle',
-    subtitle: 'Sports, food, hydration & energy',
-    menstruationTracking: false,
-    modules: {'happiness', 'sleep', 'sports', 'leisure', 'food', 'water', 'health'},
-  ),
-  _UseCase(
-    icon: Icons.track_changes,
-    color: Color(0xFFF57C00),
-    title: 'General wellness',
-    subtitle: 'Mood, activity, food, weather & more',
+    title: 'Mood & habit tracking',
+    subtitle: 'Emotions, stress, sleep, activities & substances',
     menstruationTracking: false,
     modules: {
-      'happiness', 'emotions', 'sleep', 'weather', 'health',
-      'work', 'sports', 'leisure', 'food', 'notes',
+      'happiness', 'emotions', 'sleep', 'stress', 'work', 'leisure',
+      'sports', 'substances', 'notes',
     },
+  ),
+  _UseCase(
+    icon: Icons.tune,
+    color: Color(0xFFF57C00),
+    title: 'Start from scratch',
+    subtitle: 'A blank slate: add only what you need in Settings',
+    menstruationTracking: false,
+    modules: {'happiness', 'notes'},
   ),
 ];
 
@@ -65,6 +80,7 @@ class OnboardingScreen extends StatelessWidget {
     await context.read<SettingsProvider>().setOnboardingComplete(
           menstruationTracking: useCase.menstruationTracking,
           enabledModules: useCase.modules,
+          moduleOptions: useCase.moduleOptions,
         );
   }
 
@@ -95,7 +111,9 @@ class OnboardingScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Pick the option that fits best — you can always customise modules in Settings.',
+                'These are just starting points. You can turn modules on or '
+                'off, edit their options and questions, or create your own '
+                'modules at any time in Settings.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
