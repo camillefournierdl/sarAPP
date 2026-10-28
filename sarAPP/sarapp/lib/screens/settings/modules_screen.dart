@@ -5,6 +5,7 @@ import '../../models/custom_module.dart';
 import '../../models/app_module.dart';
 import '../../providers/settings_provider.dart';
 import 'module_edit_screen.dart';
+import '../../l10n/l10n_helpers.dart';
 
 class ModulesScreen extends StatelessWidget {
   const ModulesScreen({super.key});
@@ -42,7 +43,7 @@ class ModulesScreen extends StatelessWidget {
     }).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Questionnaire modules')),
+      appBar: AppBar(title: Text(context.l10n.sectionModules)),
       floatingActionButton: FloatingActionButton(
         onPressed: () => Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const ModuleEditScreen()),
@@ -65,7 +66,7 @@ class ModulesScreen extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Drag (press long) to reorder. Tap ✏️ to customise.',
+                      context.l10n.modulesReorderHint,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: Theme.of(context)
                                 .colorScheme
@@ -94,9 +95,12 @@ class ModulesScreen extends StatelessWidget {
 
                 final emojiStr =
                     builtin?.emoji ?? (custom?.emoji.isNotEmpty == true ? custom!.emoji : null);
-                final label = builtin?.label ?? custom?.name ?? key;
+                final label = builtin != null
+                    ? context.l10n.moduleLabel(builtin)
+                    : custom?.name ?? key;
                 final subtitle = builtin != null
-                    ? (settings.customModuleQuestions[key] ?? builtin.description)
+                    ? (settings.customModuleQuestions[key] ??
+                        context.l10n.moduleDescription(builtin))
                     : (custom?.question ?? '');
 
                 return ListTile(
@@ -112,7 +116,7 @@ class ModulesScreen extends StatelessWidget {
                     children: [
                       IconButton(
                         icon: const Icon(Icons.edit_outlined, size: 20),
-                        tooltip: 'Edit module',
+                        tooltip: context.l10n.editModule,
                         onPressed: () => Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => ModuleEditScreen(moduleKey: key),
@@ -145,7 +149,7 @@ class CustomizeModulesScreen extends StatelessWidget {
     final settings = context.watch<SettingsProvider>().settings;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Customize modules')),
+      appBar: AppBar(title: Text(context.l10n.customizeModules)),
       body: ListView(
         children: settings.moduleOrder.map((key) {
           final builtin = AppModule.forKey(key);
@@ -153,9 +157,10 @@ class CustomizeModulesScreen extends StatelessWidget {
             return ListTile(
               leading: Text(builtin.emoji,
                   style: const TextStyle(fontSize: 20)),
-              title: Text(builtin.label),
+              title: Text(context.l10n.moduleLabel(builtin)),
               subtitle: Text(
-                settings.customModuleQuestions[key] ?? builtin.description,
+                settings.customModuleQuestions[key] ??
+                    context.l10n.moduleDescription(builtin),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),

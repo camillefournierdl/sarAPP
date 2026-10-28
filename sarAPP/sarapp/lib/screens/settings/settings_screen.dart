@@ -13,6 +13,7 @@ import '../../services/database_service.dart';
 import '../../services/export_service.dart';
 import 'about_screen.dart';
 import 'modules_screen.dart';
+import '../../l10n/l10n_helpers.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -28,7 +29,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final entries = context.read<EntriesProvider>().entries;
     if (entries.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No entries to export yet.')),
+        SnackBar(content: Text(context.l10n.noEntriesToExport)),
       );
       return;
     }
@@ -57,7 +58,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not read this backup file.')),
+        SnackBar(content: Text(context.l10n.backupReadError)),
       );
       return;
     }
@@ -66,20 +67,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Import backup?'),
-        content: Text(
-            'This will import ${data.entries.length} entries and restore '
-            'your modules, options, and preferences from the backup.\n\n'
-            'Entries already logged on the same dates will be overwritten. '
-            'This cannot be undone.'),
+        title: Text(context.l10n.importBackupTitle),
+        content: Text(context.l10n.importBackupBody(data.entries.length)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Import'),
+            child: Text(context.l10n.importAction),
           ),
         ],
       ),
@@ -94,20 +91,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Imported ${data.entries.length} entries.')),
+      SnackBar(content: Text(context.l10n.importedEntries(data.entries.length))),
     );
   }
 
-  String _startDayLabel(String pref) => pref == 'sunday' ? 'Sunday' : 'Monday';
+  String _startDayLabel(String pref) =>
+      pref == 'sunday' ? context.l10n.sunday : context.l10n.monday;
 
   Future<void> _pickStartDay(AppSettings settings) async {
     final picked = await showDialog<String?>(
       context: context,
       builder: (ctx) => SimpleDialog(
-        title: const Text('Week starts on'),
+        title: Text(ctx.l10n.weekStartsOn),
         children: [
-          _StartDayOption(ctx, label: 'Monday', value: 'monday', current: settings.calendarStartDay),
-          _StartDayOption(ctx, label: 'Sunday', value: 'sunday', current: settings.calendarStartDay),
+          _RadioOption(ctx, label: ctx.l10n.monday, value: 'monday', current: settings.calendarStartDay),
+          _RadioOption(ctx, label: ctx.l10n.sunday, value: 'sunday', current: settings.calendarStartDay),
         ],
       ),
     );
@@ -116,6 +114,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await context.read<SettingsProvider>().update(
           settings.copyWith(calendarStartDay: picked),
         );
+  }
+
+  String _languageLabel(String? code) =>
+      languageNames[code] ?? context.l10n.languageSystem;
+
+  Future<void> _pickLanguage(AppSettings settings) async {
+    // 'system' stands in for null, which showDialog uses for "dismissed".
+    final current = settings.languageCode ?? 'system';
+    final picked = await showDialog<String?>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: Text(ctx.l10n.language),
+        children: [
+          _RadioOption(ctx, label: _languageLabel(null), value: 'system', current: current),
+          for (final MapEntry(key: code, value: name) in languageNames.entries)
+            _RadioOption(ctx, label: name, value: code, current: current),
+        ],
+      ),
+    );
+    if (!mounted || picked == null || picked == current) return;
+    // ignore: use_build_context_synchronously
+    await context
+        .read<SettingsProvider>()
+        .setLanguage(picked == 'system' ? null : picked);
   }
 
   Future<void> _toggleMenstruationTracking(bool enabled) async {
@@ -134,9 +156,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         .setNotification(enabled: enabled, hour: hour, minute: minute);
     if (ok || !mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-          content: Text(
-              'Notifications are blocked. Allow them in system settings to get reminders.')),
+      SnackBar(content: Text(context.l10n.notificationsBlocked)),
     );
   }
 
@@ -147,7 +167,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       initialTime: TimeOfDay(
           hour: settings.notificationHour,
           minute: settings.notificationMinute),
-      helpText: 'Pick reminder time',
+      helpText: context.l10n.pickReminderTime,
     );
     if (picked == null || !mounted) return;
     await _setReminder(true, time: picked);
@@ -157,19 +177,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Seed test data?'),
+        title: const Text('seed test data?'),
         content: const Text(
-          'Inserts 60 synthetic entries with known correlations for '
-          'testing the Analytics tab.\n\n'
-          'Existing entries on those dates will be overwritten.'),
+          'inserts 60 synthetic entries with known correlations for '
+          'testing the analytics tab.\n\n'
+          'existing entries on those dates will be overwritten.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Seed'),
+            child: const Text('seed'),
           ),
         ],
       ),
@@ -301,21 +321,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Reset all data?'),
-        content: const Text(
-            'This will permanently delete all your logged entries and '
-            'clear your cycle baseline. Your tracking mode will be kept.\n\n'
-            'This cannot be undone.'),
+        title: Text(context.l10n.resetTitle),
+        content: Text(context.l10n.resetBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.error),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete everything'),
+            child: Text(context.l10n.deleteEverything),
           ),
         ],
       ),
@@ -327,24 +344,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('All data deleted.')),
+      SnackBar(content: Text(context.l10n.allDataDeleted)),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>().settings;
+    final l10n = context.l10n;
 
     return ListView(
       children: [
         // ── Questionnaire modules ─────────────────────────────────────────
-        const _Header('Questionnaire modules'),
+        _Header(l10n.sectionModules),
         ListTile(
           leading: const Icon(Icons.tune),
-          title: const Text('Questionnaire modules'),
-          subtitle: Text(
-            '${settings.enabledModules.length} active',
-          ),
+          title: Text(l10n.sectionModules),
+          subtitle: Text(l10n.modulesActive(settings.enabledModules.length)),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const ModulesScreen()),
@@ -352,8 +368,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         ListTile(
           leading: const Icon(Icons.edit_note),
-          title: const Text('Customize modules'),
-          subtitle: const Text('Edit question, options, or delete'),
+          title: Text(l10n.customizeModules),
+          subtitle: Text(l10n.customizeModulesSubtitle),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const CustomizeModulesScreen()),
@@ -361,31 +377,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
 
         // ── Tracking ──────────────────────────────────────────────────────
-        const _Header('Tracking'),
+        _Header(l10n.sectionTracking),
         SwitchListTile(
           secondary: const Icon(Icons.favorite_outline),
-          title: const Text('Menstruation tracking'),
-          subtitle: const Text('Enable cycle phases, period dates & symptoms'),
+          title: Text(l10n.menstruationTracking),
+          subtitle: Text(l10n.menstruationTrackingSubtitle),
           value: settings.isMenstruationTracking,
           onChanged: _toggleMenstruationTracking,
         ),
         ListTile(
           leading: const Icon(Icons.calendar_today),
-          title: const Text('Week starts on'),
+          title: Text(l10n.weekStartsOn),
           subtitle: Text(_startDayLabel(settings.calendarStartDay)),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => _pickStartDay(settings),
         ),
+        ListTile(
+          leading: const Icon(Icons.language),
+          title: Text(l10n.language),
+          subtitle: Text(_languageLabel(settings.languageCode)),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => _pickLanguage(settings),
+        ),
 
         // ── Cycle stats (female only) ─────────────────────────────────────
         if (settings.isMenstruationTracking) ...[
-          const _Header('Cycle'),
+          _Header(l10n.sectionCycle),
           _CycleStatsCard(entries: context.watch<EntriesProvider>().entries),
           SwitchListTile(
             secondary: const Icon(Icons.child_friendly_outlined),
-            title: const Text('Show higher-fertility window'),
-            subtitle: const Text(
-                'Highlights the ~5 days of elevated fertility around ovulation'),
+            title: Text(l10n.showFertility),
+            subtitle: Text(l10n.showFertilitySubtitle),
             value: settings.showHighFertility,
             onChanged: (v) => context
                 .read<SettingsProvider>()
@@ -397,9 +419,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           if (settings.showHighFertility)
             SwitchListTile(
               secondary: const Icon(Icons.favorite_outline),
-              title: const Text('Show intimacy'),
-              subtitle: const Text(
-                  'A pink dot indicates tracked activity in the calendar'),
+              title: Text(l10n.showIntimacy),
+              subtitle: Text(l10n.showIntimacySubtitle),
               value: settings.showLastSex,
               onChanged: (v) => context
                   .read<SettingsProvider>()
@@ -408,18 +429,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
 
         // ── Reminder ──────────────────────────────────────────────────────
-        const _Header('Reminder'),
+        _Header(l10n.sectionReminder),
         SwitchListTile(
           secondary: const Icon(Icons.notifications_outlined),
-          title: const Text('Daily reminder'),
-          subtitle: const Text('Get a nudge to log your day'),
+          title: Text(l10n.dailyReminder),
+          subtitle: Text(l10n.dailyReminderSubtitle),
           value: settings.notificationsEnabled,
           onChanged: (v) => _setReminder(v),
         ),
         if (settings.notificationsEnabled)
           ListTile(
             leading: const Icon(Icons.access_time),
-            title: const Text('Reminder time'),
+            title: Text(l10n.reminderTime),
             subtitle: Text(TimeOfDay(
                     hour: settings.notificationHour,
                     minute: settings.notificationMinute)
@@ -429,43 +450,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
 
         // ── Data ──────────────────────────────────────────────────────────
-        const _Header('Data'),
+        _Header(l10n.sectionData),
         ListTile(
           leading: const Icon(Icons.download),
-          title: const Text('Export to CSV'),
-          subtitle: const Text('Share or save your data'),
+          title: Text(l10n.exportCsv),
+          subtitle: Text(l10n.exportCsvSubtitle),
           onTap: _export,
         ),
         ListTile(
           leading: Icon(Icons.delete_forever,
               color: Theme.of(context).colorScheme.error),
-          title: Text('Reset all data',
+          title: Text(l10n.resetAllData,
               style:
                   TextStyle(color: Theme.of(context).colorScheme.error)),
-          subtitle: const Text('Delete all entries and cycle baseline'),
+          subtitle: Text(l10n.resetAllDataSubtitle),
           onTap: _resetData,
         ),
 
         // ── Analytics (placeholder until the feature ships) ──────────────
         if (!kAnalyticsEnabled) ...[
-          const _Header('Analytics'),
-          const SwitchListTile(
-            secondary: Icon(Icons.insights),
-            title: Text('Insights & correlations'),
-            subtitle: Text(
-                'Coming in a future version: see how your mood, sleep and '
-                'symptoms relate to each other.'),
+          _Header(l10n.sectionAnalytics),
+          SwitchListTile(
+            secondary: const Icon(Icons.insights),
+            title: Text(l10n.insightsTitle),
+            subtitle: Text(l10n.insightsComingSoon),
             value: false,
             onChanged: null,
           ),
         ],
 
         // ── About ─────────────────────────────────────────────────────────
-        const _Header('About'),
+        _Header(l10n.sectionAbout),
         ListTile(
           leading: const Icon(Icons.info_outline),
-          title: const Text('About sarapp'),
-          subtitle: const Text('What this app is and how it works'),
+          title: Text(l10n.aboutApp),
+          subtitle: Text(l10n.aboutAppSubtitle),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const AboutScreen()),
@@ -478,17 +497,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: ExpansionTile(
             leading: const Icon(Icons.build_outlined),
-            title: const Text('Advanced'),
+            title: Text(l10n.advanced),
             subtitle: Text(kAnalyticsEnabled
-                ? 'Nerd mode, developer tools & backup'
-                : 'Backup & restore'),
+                ? l10n.advancedSubtitleNerd
+                : l10n.advancedSubtitle),
             initiallyExpanded: false,
             children: [
               if (kAnalyticsEnabled) SwitchListTile(
                 secondary: const Icon(Icons.science_outlined),
-                title: const Text('Nerd mode'),
+                title: const Text('nerd mode'),
                 subtitle:
-                    const Text('Show statistical details in analytics'),
+                    const Text('show statistical details in analytics'),
                 value: settings.analyticsNerdMode,
                 onChanged: (v) => context
                     .read<SettingsProvider>()
@@ -503,23 +522,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.science_outlined),
-                title: const Text('Seed test data'),
+                title: const Text('seed test data'),
                 subtitle: const Text(
-                    'Insert 60 synthetic entries for Analytics testing'),
+                    'insert 60 synthetic entries for analytics testing'),
                 onTap: _isSeeding ? null : _seedTestData,
               ),
               ListTile(
                 leading: const Icon(Icons.backup_outlined),
-                title: const Text('Backup data (JSON)'),
-                subtitle: const Text(
-                    'Full backup — use to move to a new install'),
+                title: Text(l10n.backupJson),
+                subtitle: Text(l10n.backupJsonSubtitle),
                 onTap: _exportBackup,
               ),
               ListTile(
                 leading: const Icon(Icons.restore_outlined),
-                title: const Text('Import backup'),
-                subtitle: const Text(
-                    'Restore entries and settings from a JSON backup'),
+                title: Text(l10n.importBackup),
+                subtitle: Text(l10n.importBackupSubtitle),
                 onTap: _importBackup,
               ),
             ],
@@ -541,27 +558,26 @@ class _CycleStatsCard extends StatelessWidget {
     final stats = CycleService.cycleStats(entries);
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
+    final l10n = context.l10n;
 
     String cycleLabel;
     String cycleNote;
     if (stats.cyclesLogged == 0) {
-      cycleLabel = '28 days (default)';
-      cycleNote = 'Log at least 2 period starts to personalise';
+      cycleLabel = l10n.daysDefault(28);
+      cycleNote = l10n.cycleNoteDefault;
     } else {
-      cycleLabel = '${stats.cycleLength} days';
-      cycleNote = 'Based on ${stats.cyclesLogged} '
-          '${stats.cyclesLogged == 1 ? 'cycle' : 'cycles'}';
+      cycleLabel = l10n.daysCount(stats.cycleLength);
+      cycleNote = l10n.cycleNoteBased(stats.cyclesLogged);
     }
 
     String periodLabel;
     String periodNote;
     if (stats.periodsLogged == 0) {
-      periodLabel = '5 days (default)';
-      periodNote = 'Log a period start + end to personalise';
+      periodLabel = l10n.daysDefault(5);
+      periodNote = l10n.periodNoteDefault;
     } else {
-      periodLabel = '${stats.periodLength} days';
-      periodNote = 'Based on ${stats.periodsLogged} '
-          '${stats.periodsLogged == 1 ? 'period' : 'periods'}';
+      periodLabel = l10n.daysCount(stats.periodLength);
+      periodNote = l10n.periodNoteBased(stats.periodsLogged);
     }
 
     // Derived phases (informational)
@@ -577,37 +593,40 @@ class _CycleStatsCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Your cycle statistics',
+              Text(l10n.cycleStatsTitle,
                   style: theme.textTheme.titleSmall
                       ?.copyWith(color: primary)),
               const SizedBox(height: 12),
               _StatRow(
-                label: 'Cycle length',
+                label: l10n.cycleLength,
                 value: cycleLabel,
                 note: cycleNote,
               ),
               const SizedBox(height: 8),
               _StatRow(
-                label: 'Period length',
+                label: l10n.periodLength,
                 value: periodLabel,
                 note: periodNote,
               ),
               if (stats.cyclesLogged > 0 || stats.periodsLogged > 0) ...[
                 const Divider(height: 20),
-                Text('Estimated phases',
+                Text(l10n.estimatedPhases,
                     style: theme.textTheme.labelSmall
                         ?.copyWith(color: theme.colorScheme.outline)),
                 const SizedBox(height: 8),
-                _PhaseRow('Menstruation', '$P days', const Color(0xFFEF5350)),
+                _PhaseRow(l10n.phaseMenstruation, l10n.daysCount(P),
+                    const Color(0xFFEF5350)),
                 _PhaseRow(
-                    'Follicular',
-                    follicular > 0 ? '$follicular days' : '—',
+                    l10n.phaseFollicular,
+                    follicular > 0 ? l10n.daysCount(follicular) : '—',
                     const Color(0xFF66BB6A)),
-                _PhaseRow('Ovulation', '1 day', const Color(0xFF42A5F5)),
-                _PhaseRow('Luteal', '14 days', const Color(0xFFAB47BC)),
+                _PhaseRow(l10n.phaseOvulation, l10n.daysCount(1),
+                    const Color(0xFF42A5F5)),
+                _PhaseRow(l10n.phaseLuteal, l10n.daysCount(14),
+                    const Color(0xFFAB47BC)),
                 const SizedBox(height: 4),
                 Text(
-                  'Luteal phase is fixed at 14 days (scientifically constant).',
+                  l10n.lutealFixedNote,
                   style: theme.textTheme.bodySmall
                       ?.copyWith(color: theme.colorScheme.outline),
                 ),
@@ -635,18 +654,26 @@ class _StatRow extends StatelessWidget {
         Expanded(
             child: Text(label,
                 style: Theme.of(context).textTheme.bodyMedium)),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(value,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(fontWeight: FontWeight.bold)),
-            Text(note,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.outline)),
-          ],
+        const SizedBox(width: 12),
+        // Flexible so long (e.g. French) notes wrap instead of squeezing
+        // the label down to one letter per line.
+        Flexible(
+          flex: 2,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(value,
+                  textAlign: TextAlign.end,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.copyWith(fontWeight: FontWeight.bold)),
+              Text(note,
+                  textAlign: TextAlign.end,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.outline)),
+            ],
+          ),
         ),
       ],
     );
@@ -681,9 +708,9 @@ class _PhaseRow extends StatelessWidget {
   }
 }
 
-// ── Start-day dialog option ───────────────────────────────────────────────────
+// ── Radio-style dialog option ─────────────────────────────────────────────────────
 
-Widget _StartDayOption(
+Widget _RadioOption(
   BuildContext ctx, {
   required String label,
   required String value,

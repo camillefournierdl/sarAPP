@@ -1,3 +1,6 @@
+// TODO(l10n): this screen is test-release only (kAnalyticsEnabled) and not
+// translated yet; its insight sentences are assembled from parts, so they
+// need ICU messages per sentence shape before moving to the ARB files.
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/app_module.dart';

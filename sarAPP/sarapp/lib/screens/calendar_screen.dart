@@ -10,6 +10,7 @@ import '../services/cycle_service.dart';
 import '../widgets/cycle_phase_selector.dart';
 import '../widgets/emotion_tag_selector.dart';
 import 'log_entry_screen.dart';
+import '../l10n/l10n_helpers.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -34,7 +35,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     final todayButton = IconButton(
       icon: const Icon(Icons.today),
-      tooltip: 'Go to today',
+      tooltip: context.l10n.goToToday,
       onPressed: _jumpToToday,
     );
 
@@ -64,9 +65,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
             children: [
               Expanded(
                 child: TabBar(
-                  tabs: const [
-                    Tab(icon: Icon(Icons.favorite_outline), text: 'Cycle'),
-                    Tab(icon: Icon(Icons.mood), text: 'Mood'),
+                  tabs: [
+                    Tab(
+                        icon: const Icon(Icons.favorite_outline),
+                        text: context.l10n.tabCycle),
+                    Tab(icon: const Icon(Icons.mood), text: context.l10n.tabMood),
                   ],
                   labelColor: Theme.of(context).colorScheme.primary,
                 ),
@@ -84,7 +87,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     maintainState: true,
                     child: IconButton(
                       icon: const Icon(Icons.help_outline),
-                      tooltip: 'About cycle phases',
+                      tooltip: context.l10n.aboutCyclePhases,
                       onPressed: () => _showCycleInfo(context),
                     ),
                   ),
@@ -189,8 +192,7 @@ class _CycleCalendarTabState extends State<_CycleCalendarTab> {
         // Instruction when no period data logged yet
         if (!hasPeriodEntries)
           _InstructionBanner(
-            message:
-                'Tap a past day on the calendar to mark your period start and end.',
+            message: context.l10n.cycleCalendarHint,
           ),
 
         _SharedCalendar(
@@ -326,7 +328,7 @@ class _MoodCalendarTabState extends State<_MoodCalendarTab> {
       child: Column(
         children: [
           _InstructionBanner(
-            message: 'Tap a past day on the calendar to edit the log for that day.',
+            message: context.l10n.moodCalendarHint,
           ),
 
           _SharedCalendar(
@@ -385,6 +387,7 @@ class _SharedCalendar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return TableCalendar(
+      locale: Localizations.localeOf(context).toLanguageTag(),
       firstDay: DateTime.utc(2020, 1, 1),
       lastDay: DateTime.utc(2030, 12, 31),
       focusedDay: focusedDay,
@@ -432,7 +435,15 @@ class _SharedCalendar extends StatelessWidget {
           );
         },
       ),
-      headerStyle: const HeaderStyle(formatButtonVisible: false),
+      headerStyle: HeaderStyle(
+        formatButtonVisible: false,
+        titleTextFormatter: (date, locale) =>
+            DateFormat.yMMMM(locale).format(date).toLowerCase(),
+      ),
+      daysOfWeekStyle: DaysOfWeekStyle(
+        dowTextFormatter: (date, locale) =>
+            DateFormat.E(locale).format(date).toLowerCase(),
+      ),
     );
   }
 }
@@ -537,21 +548,19 @@ class _PhaseLegend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final phases = [
-      ('Menstruation',     'menstruation'),
-      ('Follicular',       'follicular'),
-      if (showHighFertility)
-        ('Higher fertility', 'high_fertility')
-      else
-        ('Ovulation',      'ovulation'),
-      ('Luteal',           'luteal'),
+      'menstruation',
+      'follicular',
+      if (showHighFertility) 'high_fertility' else 'ovulation',
+      'luteal',
     ];
     return Wrap(
       spacing: 12,
       runSpacing: 4,
       children: [
-        ...phases.map((p) => _LegendDot(p.$1, cyclePhaseColor(p.$2))),
+        ...phases.map((p) =>
+            _LegendDot(context.l10n.cyclePhase(p), cyclePhaseColor(p))),
         if (showLastSex)
-          const _LegendDot('Intimacy', Color(0xFFE91E8C)),
+          _LegendDot(context.l10n.intimacy, const Color(0xFFE91E8C)),
       ],
     );
   }
@@ -620,7 +629,8 @@ class _InteractiveMoodLegend extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 6),
-                const Text('Happiness', style: TextStyle(fontSize: 12)),
+                Text(context.l10n.modHappiness,
+                    style: const TextStyle(fontSize: 12)),
               ],
             ),
           ),
@@ -660,7 +670,7 @@ class _InteractiveMoodLegend extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      e.label.split(' ').last,
+                      context.l10n.option(e.label).split(' ').last,
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: isSelected
@@ -703,21 +713,21 @@ class _PeriodDayPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            DateFormat('EEEE, MMMM d').format(day),
+            DateFormat.MMMMEEEEd().format(day).toLowerCase(),
             style: Theme.of(context)
                 .textTheme
                 .labelLarge
                 ?.copyWith(color: Theme.of(context).colorScheme.primary),
           ),
           SwitchListTile(
-            title: const Text('Period started on this day'),
+            title: Text(context.l10n.periodStartedToday),
             value: periodStart,
             onChanged: (v) => onChanged(v, periodEnd),
             contentPadding: EdgeInsets.zero,
             dense: true,
           ),
           SwitchListTile(
-            title: const Text('Period ended on this day'),
+            title: Text(context.l10n.periodEndedToday),
             value: periodEnd,
             onChanged: (v) => onChanged(periodStart, v),
             contentPadding: EdgeInsets.zero,
@@ -779,88 +789,72 @@ class _CycleInfoSheet extends StatelessWidget {
     final theme = Theme.of(context);
     final muted = theme.textTheme.bodyMedium
         ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final l10n = context.l10n;
 
     return ListView(
       controller: scrollController,
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
       children: [
-        Text('The menstrual cycle',
+        Text(l10n.cycleInfoTitle,
             style: theme.textTheme.titleLarge
                 ?.copyWith(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         Text(
-          'A cycle starts on the first day of your period and ends the day '
-          'before the next one. On average it lasts about 28 days, but '
-          'anywhere between 21 and 35 days is common.',
+          l10n.cycleInfoIntro,
           style: muted,
         ),
         const SizedBox(height: 20),
-        const _PhaseInfo(
+        _PhaseInfo(
           phase: 'menstruation',
-          title: 'Menstruation',
-          duration: 'About 3–7 days',
-          body: 'Your period: the lining of the uterus is shed. Energy can '
-              'be lower and cramps are common.',
+          title: l10n.phaseInfoMenstruationTitle,
+          duration: l10n.phaseInfoMenstruationDuration,
+          body: l10n.phaseInfoMenstruationBody,
         ),
-        const _PhaseInfo(
+        _PhaseInfo(
           phase: 'follicular',
-          title: 'Follicular phase',
-          duration: 'About 7–14 days after your period',
-          body: 'Hormone levels (oestrogen) rise as the body prepares to '
-              'release an egg. Many people feel more energetic. This is the '
-              'phase whose length varies the most, which is why cycle lengths '
-              'differ.',
+          title: l10n.phaseInfoFollicularTitle,
+          duration: l10n.phaseInfoFollicularDuration,
+          body: l10n.phaseInfoFollicularBody,
         ),
-        const _PhaseInfo(
+        _PhaseInfo(
           phase: 'high_fertility',
-          title: 'Higher fertility window',
-          duration: 'About 5 days, ending on ovulation',
-          body: 'The days when pregnancy is most likely. To show it on the '
-              'calendar, turn on "Show higher-fertility window" in Settings.',
+          title: l10n.phaseInfoFertilityTitle,
+          duration: l10n.phaseInfoFertilityDuration,
+          body: l10n.phaseInfoFertilityBody,
         ),
-        const _PhaseInfo(
+        _PhaseInfo(
           phase: 'ovulation',
-          title: 'Ovulation',
-          duration: 'About 1 day',
-          body: 'An egg is released, usually around 14 days before the next '
-              'period (day 14 of a 28-day cycle).',
+          title: l10n.phaseInfoOvulationTitle,
+          duration: l10n.phaseInfoOvulationDuration,
+          body: l10n.phaseInfoOvulationBody,
         ),
-        const _PhaseInfo(
+        _PhaseInfo(
           phase: 'luteal',
-          title: 'Luteal phase',
-          duration: 'About 12–14 days',
-          body: 'Progesterone rises after ovulation. Towards the end, some '
-              'people notice PMS symptoms such as bloating, mood changes or '
-              'breast tenderness. This phase is fairly stable in length.',
+          title: l10n.phaseInfoLutealTitle,
+          duration: l10n.phaseInfoLutealDuration,
+          body: l10n.phaseInfoLutealBody,
         ),
         const SizedBox(height: 8),
-        Text('Every body is different',
+        Text(l10n.everyBodyTitle,
             style: theme.textTheme.titleMedium
                 ?.copyWith(fontWeight: FontWeight.bold)),
         const SizedBox(height: 6),
         Text(
-          'These are averages. Your own cycle may be shorter, longer or '
-          'irregular, and it can change over time with age, stress, illness, '
-          'travel, contraception, pregnancy or menopause.',
+          l10n.everyBodyBody,
           style: muted,
         ),
         const SizedBox(height: 20),
-        Text('Getting to know your cycle',
+        Text(l10n.knowYourCycleTitle,
             style: theme.textTheme.titleMedium
                 ?.copyWith(fontWeight: FontWeight.bold)),
         const SizedBox(height: 6),
         Text(
-          'Mark the start and end of each period on the calendar. sarapp uses '
-          'your own history, not just the averages above, to estimate your '
-          'phases. After a few cycles, you will have a better idea of when '
-          'each phase is likely to happen for you, and how your mood, sleep '
-          'and symptoms change across your cycle.',
+          l10n.knowYourCycleBody,
           style: muted,
         ),
         const SizedBox(height: 20),
         Text(
-          'Phases shown in sarapp are estimates. They are not reliable enough '
-          'to use as contraception or to plan a pregnancy.',
+          l10n.phasesEstimateNote,
           style: theme.textTheme.bodySmall
               ?.copyWith(color: theme.colorScheme.outline),
         ),

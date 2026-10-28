@@ -36,6 +36,8 @@ class AppSettings {
   final Map<String, String> customModuleQuestions;
   final List<String> moduleOrder;
   final bool analyticsNerdMode;
+  /// UI language code ('en', 'fr'); null = follow the device language.
+  final String? languageCode;
 
   const AppSettings({
     this.menstruationTracking = true,
@@ -67,6 +69,7 @@ class AppSettings {
       'symptoms', 'libido', 'sex', 'notes',
     ],
     this.analyticsNerdMode = false,
+    this.languageCode,
   });
 
   bool get isMenstruationTracking => menstruationTracking;
@@ -131,6 +134,7 @@ class AppSettings {
     Map<String, String>? customModuleQuestions,
     List<String>? moduleOrder,
     bool? analyticsNerdMode,
+    Object? languageCode = _sentinel,
   }) =>
       AppSettings(
         menstruationTracking: menstruationTracking ?? this.menstruationTracking,
@@ -156,6 +160,9 @@ class AppSettings {
         customModuleQuestions: customModuleQuestions ?? this.customModuleQuestions,
         moduleOrder: moduleOrder ?? this.moduleOrder,
         analyticsNerdMode: analyticsNerdMode ?? this.analyticsNerdMode,
+        languageCode: identical(languageCode, _sentinel)
+            ? this.languageCode
+            : languageCode as String?,
       );
 
   String questionFor(String moduleKey, String defaultQuestion) =>
@@ -185,6 +192,7 @@ class AppSettings {
         'customModuleQuestions': customModuleQuestions,
         'moduleOrder': moduleOrder,
         'analyticsNerdMode': analyticsNerdMode,
+        'languageCode': languageCode,
       };
 
   /// Missing keys fall back to defaults, so a backup from an older app
@@ -249,6 +257,7 @@ class AppSettings {
           : fallback.moduleOrder,
       analyticsNerdMode:
           j['analyticsNerdMode'] as bool? ?? fallback.analyticsNerdMode,
+      languageCode: j['languageCode'] as String?,
     );
   }
 

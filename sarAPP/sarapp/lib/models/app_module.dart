@@ -115,7 +115,8 @@ class AppModule {
     emoji: '🍽️',
     responseType: ResponseType.multiSelect,
     defaultOptions: [
-      '🌾 Gluten', '🥛 Lactose', '🍬 Sugars', '🍗 Chicken', '🐟 Fish',
+      '🌾 Gluten', '🥛 Lactose', '🍬 Sugars', '🍗 Chicken', '🥩 Red meat',
+      '🍖 Other meat', '🐟 Fish',
     ],
   );
   static const substances = AppModule(

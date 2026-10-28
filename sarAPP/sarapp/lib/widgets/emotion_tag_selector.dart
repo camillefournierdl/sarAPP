@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/l10n_helpers.dart';
 
 // Built-in emotions: value is what gets stored in old entries, label is the display string.
 const builtInEmotions = [
@@ -42,7 +43,7 @@ class EmotionTagSelector extends StatelessWidget {
             selected.contains(_valueForLabel(label));
         final color = _colorForLabel(label);
         return FilterChip(
-          label: Text(label),
+          label: Text(context.l10n.option(label)),
           selected: isSelected,
           selectedColor: color.withAlpha(180),
           checkmarkColor: Colors.white,

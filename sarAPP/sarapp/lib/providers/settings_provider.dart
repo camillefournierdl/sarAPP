@@ -54,7 +54,8 @@ class SettingsProvider extends ChangeNotifier {
   }) async {
     if (enabled) {
       if (!await NotificationService.requestPermission()) return false;
-      await NotificationService.scheduleDailyReminder(hour, minute);
+      await NotificationService.scheduleDailyReminder(hour, minute,
+          languageCode: _settings.languageCode);
     } else {
       await NotificationService.cancelAll();
     }
@@ -64,5 +65,16 @@ class SettingsProvider extends ChangeNotifier {
       notificationMinute: minute,
     ));
     return true;
+  }
+
+  /// [code] is 'en', 'fr', or null to follow the device language.
+  Future<void> setLanguage(String? code) async {
+    await update(_settings.copyWith(languageCode: code));
+    // The reminder text is fixed at scheduling time, so re-schedule it.
+    if (_settings.notificationsEnabled) {
+      await NotificationService.scheduleDailyReminder(
+          _settings.notificationHour, _settings.notificationMinute,
+          languageCode: code);
+    }
   }
 }

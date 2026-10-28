@@ -29,7 +29,7 @@ class BackupService {
 
     await Share.shareXFiles(
       [XFile(file.path)],
-      subject: 'sarapp Data Backup',
+      subject: 'sarapp data backup',
     );
   }
 

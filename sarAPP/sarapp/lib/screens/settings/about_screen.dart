@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../l10n/l10n_helpers.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -8,9 +9,10 @@ class AboutScreen extends StatelessWidget {
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
     final outline = theme.colorScheme.outline;
+    final l10n = context.l10n;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('About sarapp')),
+      appBar: AppBar(title: Text(l10n.aboutApp)),
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
@@ -24,7 +26,7 @@ class AboutScreen extends StatelessWidget {
                     style: theme.textTheme.headlineSmall
                         ?.copyWith(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
-                Text('v0.1 · Free, open-source, and made with ❤️',
+                Text(l10n.aboutTagline,
                     style:
                         theme.textTheme.bodySmall?.copyWith(color: outline)),
               ],
@@ -35,47 +37,32 @@ class AboutScreen extends StatelessWidget {
           // Philosophy
           _AboutSection(
             icon: Icons.tune,
-            title: 'Track what you choose',
-            body:
-                'sarapp lets you track different dimensions of your day. Everyone is different.'
-                ' You decide what dimensions matter to you. Enable or '
-                'disable any module at any time in Settings. '
-                'There is no required field.',
+            title: l10n.aboutTrackTitle,
+            body: l10n.aboutTrackBody,
           ),
           const SizedBox(height: 20),
           _AboutSection(
             icon: Icons.lock_outline,
-            title: 'Your data, your device',
-            body:
-                'Everything you log stays on your phone. No account, no cloud '
-                'sync. Your data is stored locally in a private '
-                'database and can be exported to a CSV whenever you want.',
+            title: l10n.aboutDataTitle,
+            body: l10n.aboutDataBody,
           ),
           const SizedBox(height: 20),
           _AboutSection(
             icon: Icons.code,
-            title: 'Free and open-source',
-            body:
-                'sarapp is free to use and its source code is open. You can '
-                'inspect exactly what it does, contribute improvements, or '
-                'adapt it for your own needs.',
+            title: l10n.aboutOpenTitle,
+            body: l10n.aboutOpenBody,
           ),
           const SizedBox(height: 20),
           _AboutSection(
             icon: Icons.health_and_safety_outlined,
-            title: 'Not medical advice',
-            body:
-                'Cycle phases and fertile days shown in sarapp are estimates '
-                'based on what you log. They are not reliable enough to use '
-                'as contraception or to plan a pregnancy, and sarapp is not a '
-                'medical device. Talk to a healthcare professional about any '
-                'health concerns.',
+            title: l10n.aboutMedicalTitle,
+            body: l10n.aboutMedicalBody,
           ),
           const SizedBox(height: 32),
 
           Center(
             child: Text(
-              'Data always stays on your device.',
+              l10n.aboutFooter,
               style: theme.textTheme.bodySmall?.copyWith(color: outline),
               textAlign: TextAlign.center,
             ),

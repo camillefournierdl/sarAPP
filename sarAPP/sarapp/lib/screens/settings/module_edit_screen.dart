@@ -4,6 +4,7 @@ import '../../models/app_settings.dart';
 import '../../models/custom_module.dart';
 import '../../models/app_module.dart';
 import '../../providers/settings_provider.dart';
+import '../../l10n/l10n_helpers.dart';
 
 class ModuleEditScreen extends StatefulWidget {
   final String? moduleKey; // null = create new custom module
@@ -31,6 +32,7 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
   late List<String> _options;
   late List<String> _conditionalOptions;
   bool _isDirty = false;
+  bool _didInitText = false;
 
   @override
   void initState() {
@@ -47,8 +49,10 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
     }
 
     if (_builtin != null) {
+      // Default question / follow-up text is translated, so it's filled in
+      // didChangeDependencies once localizations are available.
       _questionCtrl = TextEditingController(
-          text: settings.customModuleQuestions[_builtin!.key] ?? _builtin!.description);
+          text: settings.customModuleQuestions[_builtin!.key]);
       _nameCtrl = TextEditingController();
       _emojiCtrl = TextEditingController();
       _responseType = _builtin!.responseType;
@@ -56,7 +60,7 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
       _conditionalTriggerCtrl = TextEditingController(
           text: settings.conditionalTriggerFor(_builtin!.key));
       _conditionalQuestionCtrl = TextEditingController(
-          text: settings.conditionalQuestionFor(_builtin!.key));
+          text: settings.moduleConditionalQuestion[_builtin!.key]);
       _conditionalOptions = List.from(settings.conditionalOptionsFor(_builtin!.key));
       _labelLowCtrl = TextEditingController(text: settings.labelLowFor(_builtin!.key));
       _labelHighCtrl = TextEditingController(text: settings.labelHighFor(_builtin!.key));
@@ -85,7 +89,27 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
     }
     _optionAddCtrl = TextEditingController();
     _conditionalOptionAddCtrl = TextEditingController();
+  }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didInitText) return;
+    _didInitText = true;
+    final l10n = context.l10n;
+    if (_builtin != null) {
+      if (_questionCtrl.text.isEmpty) {
+        _questionCtrl.text = l10n.moduleDescription(_builtin!);
+      }
+      if (_conditionalQuestionCtrl.text.isEmpty) {
+        _conditionalQuestionCtrl.text =
+            l10n.conditionalQuestion(_builtin!.conditionalQuestion);
+      }
+    }
+    // The trigger is stored as the raw option value; show its display label.
+    _conditionalTriggerCtrl.text = l10n.option(_conditionalTriggerCtrl.text);
+
+    // Listeners are added after the initial text so filling it isn't an edit.
     for (final ctrl in [
       _questionCtrl, _nameCtrl, _emojiCtrl,
       _conditionalTriggerCtrl, _conditionalQuestionCtrl,
@@ -94,6 +118,11 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
       ctrl.addListener(_markDirty);
     }
   }
+
+  /// Maps a trigger typed as a display label back to the stored option value.
+  String _rawTrigger(String text) => _options.firstWhere(
+      (o) => context.l10n.option(o) == text,
+      orElse: () => text);
 
   void _markDirty() {
     if (!_isDirty) setState(() => _isDirty = true);
@@ -145,7 +174,9 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
       final question = _questionCtrl.text.trim();
       final questionMap =
           Map<String, String>.from(settings.customModuleQuestions);
-      if (question.isEmpty || question == _builtin!.description) {
+      if (question.isEmpty ||
+          question == _builtin!.description ||
+          question == context.l10n.moduleDescription(_builtin!)) {
         questionMap.remove(_builtin!.key);
       } else {
         questionMap[_builtin!.key] = question;
@@ -175,8 +206,9 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
       }
 
       if (_responseType == ResponseType.conditional) {
-        final trigger = _conditionalTriggerCtrl.text.trim();
+        final trigger = _rawTrigger(_conditionalTriggerCtrl.text.trim());
         final condQ = _conditionalQuestionCtrl.text.trim();
+        final defaultCondQ = _builtin!.conditionalQuestion;
 
         final condOpts = Map<String, List<String>>.from(settings.moduleConditionalOptions);
         condOpts[_builtin!.key] = List.from(_conditionalOptions);
@@ -189,7 +221,9 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
         updated = updated.copyWith(moduleConditionalTrigger: triggers);
 
         final condQs = Map<String, String>.from(settings.moduleConditionalQuestion);
-        (condQ.isEmpty || condQ == _builtin!.conditionalQuestion)
+        (condQ.isEmpty ||
+                condQ == defaultCondQ ||
+                condQ == context.l10n.conditionalQuestion(defaultCondQ))
             ? condQs.remove(_builtin!.key)
             : condQs[_builtin!.key] = condQ;
         updated = updated.copyWith(moduleConditionalQuestion: condQs);
@@ -200,7 +234,7 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
       final name = _nameCtrl.text.trim();
       final question = _questionCtrl.text.trim();
       if (name.isEmpty || question.isEmpty) return;
-      final trigger = _conditionalTriggerCtrl.text.trim();
+      final trigger = _rawTrigger(_conditionalTriggerCtrl.text.trim());
       final condQuestion = _conditionalQuestionCtrl.text.trim();
       final updatedModule = CustomModule(
         id: _custom!.id,
@@ -224,7 +258,7 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
       final name = _nameCtrl.text.trim();
       final question = _questionCtrl.text.trim();
       if (name.isEmpty || question.isEmpty) return;
-      final trigger = _conditionalTriggerCtrl.text.trim();
+      final trigger = _rawTrigger(_conditionalTriggerCtrl.text.trim());
       final condQuestion = _conditionalQuestionCtrl.text.trim();
       final newModule = CustomModule.create(
         name: name,
@@ -253,21 +287,18 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text('Remove "${_custom!.name}"?'),
-        content: const Text(
-          'This module will be removed from your questionnaire. '
-          'Past responses are kept silently in your data.',
-        ),
+        title: Text(context.l10n.removeModuleTitle(_custom!.name)),
+        content: Text(context.l10n.removeModuleBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.error),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Remove'),
+            child: Text(context.l10n.remove),
           ),
         ],
       ),
@@ -289,12 +320,13 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = context.l10n;
 
     final title = _builtin != null
-        ? '${_builtin!.emoji} ${_builtin!.label}'
+        ? '${_builtin!.emoji} ${l10n.moduleLabel(_builtin!)}'
         : _custom != null
-            ? 'Edit module'
-            : 'New module';
+            ? l10n.editModule
+            : l10n.newModule;
 
     return PopScope(
       canPop: !_isDirty,
@@ -303,16 +335,16 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
         final leave = await showDialog<bool>(
           context: context,
           builder: (_) => AlertDialog(
-            title: const Text('Discard changes?'),
-            content: const Text('You have unsaved edits. Discard them?'),
+            title: Text(l10n.discardTitle),
+            content: Text(l10n.discardBody),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: const Text('Keep editing'),
+                child: Text(l10n.keepEditing),
               ),
               FilledButton(
                 onPressed: () => Navigator.pop(context, true),
-                child: const Text('Discard'),
+                child: Text(l10n.discard),
               ),
             ],
           ),
@@ -323,7 +355,7 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
       appBar: AppBar(
         title: Text(title),
         actions: [
-          TextButton(onPressed: _save, child: const Text('Save')),
+          TextButton(onPressed: _save, child: Text(l10n.save)),
         ],
       ),
       body: ListView(
@@ -335,9 +367,9 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
                 width: 70,
                 child: TextField(
                   controller: _emojiCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Icon',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.iconLabel,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
               ),
@@ -345,9 +377,9 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
               Expanded(
                 child: TextField(
                   controller: _nameCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Module name *',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.moduleNameLabel,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
               ),
@@ -357,24 +389,24 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
           TextField(
             controller: _questionCtrl,
             decoration: InputDecoration(
-              labelText: 'Question',
-              helperText: _builtin != null ? 'Clear to restore default' : null,
+              labelText: l10n.questionLabel,
+              helperText: _builtin != null ? l10n.clearToRestoreDefault : null,
               border: const OutlineInputBorder(),
             ),
             maxLines: 2,
           ),
           const SizedBox(height: 16),
-          Text('Response type', style: theme.textTheme.labelLarge),
+          Text(l10n.responseType, style: theme.textTheme.labelLarge),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
             children: ResponseType.values.map((rt) {
               final label = switch (rt) {
-                ResponseType.scale => '0–10 Scale',
-                ResponseType.multiSelect => 'Multi-select',
-                ResponseType.singleSelect => 'Single-select',
-                ResponseType.text => 'Free text',
-                ResponseType.conditional => 'Conditional',
+                ResponseType.scale => l10n.rtScale,
+                ResponseType.multiSelect => l10n.rtMultiSelect,
+                ResponseType.singleSelect => l10n.rtSingleSelect,
+                ResponseType.text => l10n.rtText,
+                ResponseType.conditional => l10n.rtConditional,
               };
               if (_builtin != null) {
                 return rt == _responseType
@@ -406,11 +438,11 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
                 child: TextField(
                   controller: _labelLowCtrl,
                   decoration: InputDecoration(
-                    labelText: 'Low label',
+                    labelText: l10n.lowLabel,
                     hintText: _builtin?.labelLow.isNotEmpty == true
                         ? _builtin!.labelLow
                         : '0',
-                    helperText: 'Emoji or text for the low end',
+                    helperText: l10n.lowLabelHelper,
                     border: const OutlineInputBorder(),
                   ),
                 ),
@@ -420,11 +452,11 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
                 child: TextField(
                   controller: _labelHighCtrl,
                   decoration: InputDecoration(
-                    labelText: 'High label',
+                    labelText: l10n.highLabel,
                     hintText: _builtin?.labelHigh.isNotEmpty == true
                         ? _builtin!.labelHigh
                         : '10',
-                    helperText: 'Emoji or text for the high end',
+                    helperText: l10n.highLabelHelper,
                     border: const OutlineInputBorder(),
                   ),
                 ),
@@ -435,14 +467,14 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
           if (_hasOptionList) ...[
             Text(
               _responseType == ResponseType.conditional
-                  ? 'Primary options'
-                  : 'Answer options',
+                  ? l10n.primaryOptions
+                  : l10n.answerOptions,
               style: theme.textTheme.labelLarge,
             ),
             const SizedBox(height: 8),
             ..._options.map((opt) => ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: Text(opt),
+                  title: Text(l10n.option(opt)),
                   trailing: IconButton(
                     icon: const Icon(Icons.close),
                     onPressed: () => setState(() { _options.remove(opt); _isDirty = true; }),
@@ -450,7 +482,7 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
                 )),
             _AddItemRow(
               controller: _optionAddCtrl,
-              hint: 'e.g. 😊 Happy',
+              hint: l10n.optionHint,
               onAdd: _addOption,
             ),
             const SizedBox(height: 16),
@@ -458,26 +490,26 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
           if (_responseType == ResponseType.conditional) ...[
             TextField(
               controller: _conditionalTriggerCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Trigger option',
-                hintText: 'Which option reveals the follow-up?',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.triggerOption,
+                hintText: l10n.triggerOptionHint,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _conditionalQuestionCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Follow-up question (optional)',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.followupQuestionLabel,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 12),
-            Text('Follow-up options', style: theme.textTheme.labelLarge),
+            Text(l10n.followupOptions, style: theme.textTheme.labelLarge),
             const SizedBox(height: 8),
             ..._conditionalOptions.map((opt) => ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: Text(opt),
+                  title: Text(l10n.option(opt)),
                   trailing: IconButton(
                     icon: const Icon(Icons.close),
                     onPressed: () =>
@@ -486,7 +518,7 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
                 )),
             _AddItemRow(
               controller: _conditionalOptionAddCtrl,
-              hint: 'Add a follow-up option',
+              hint: l10n.followupOptionHint,
               onAdd: _addConditionalOption,
             ),
             const SizedBox(height: 16),
@@ -496,9 +528,9 @@ class _ModuleEditScreenState extends State<ModuleEditScreen> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: Icon(Icons.delete_outline, color: theme.colorScheme.error),
-              title: Text('Remove module',
+              title: Text(l10n.removeModule,
                   style: TextStyle(color: theme.colorScheme.error)),
-              subtitle: const Text('Past responses are kept in your data'),
+              subtitle: Text(l10n.pastResponsesKept),
               onTap: _deleteModule,
             ),
           ],
@@ -540,7 +572,7 @@ class _AddItemRow extends StatelessWidget {
           const SizedBox(width: 8),
           FilledButton(
             onPressed: onAdd,
-            child: const Text('Add'),
+            child: Text(context.l10n.add),
           ),
         ],
       ),

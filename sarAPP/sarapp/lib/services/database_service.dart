@@ -393,6 +393,7 @@ class DatabaseService {
       moduleOrder: _parseModuleOrder(await _getSetting('module_order')),
       analyticsNerdMode:
           (await _getSetting('analytics_nerd_mode') ?? 'false') == 'true',
+      languageCode: await _getSetting('language'),
     );
   }
 
@@ -421,6 +422,7 @@ class DatabaseService {
       'analytics_nerd_mode': s.analyticsNerdMode.toString(),
       'calendar_start_day': s.calendarStartDay,
       if (s.lastPeriodStart != null) 'last_period_start': s.lastPeriodStart!,
+      if (s.languageCode != null) 'language': s.languageCode!,
     };
     final db = await database;
     // One transaction so a failure can't leave settings half-written.
@@ -432,6 +434,9 @@ class DatabaseService {
       if (s.lastPeriodStart == null) {
         batch.delete('settings',
             where: 'key = ?', whereArgs: ['last_period_start']);
+      }
+      if (s.languageCode == null) {
+        batch.delete('settings', where: 'key = ?', whereArgs: ['language']);
       }
       await batch.commit(noResult: true);
     });

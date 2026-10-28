@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/l10n_helpers.dart';
 import '../providers/settings_provider.dart';
 
 class _UseCase {
@@ -23,12 +25,12 @@ class _UseCase {
   });
 }
 
-const _useCases = [
+List<_UseCase> _useCases(AppLocalizations l10n) => [
   _UseCase(
     icon: Icons.favorite,
-    color: Color(0xFFE53935),
-    title: 'Menstrual tracking',
-    subtitle: 'Cycle phases, period symptoms, mood & libido',
+    color: const Color(0xFFE53935),
+    title: l10n.onboardingMenstrualTitle,
+    subtitle: l10n.onboardingMenstrualSubtitle,
     menstruationTracking: true,
     modules: {
       'happiness', 'emotions', 'sleep', 'symptoms', 'libido', 'health', 'notes',
@@ -36,9 +38,9 @@ const _useCases = [
   ),
   _UseCase(
     icon: Icons.healing,
-    color: Color(0xFF00897B),
-    title: 'Chronic symptoms',
-    subtitle: 'Symptoms, pain, sleep, stress & possible triggers',
+    color: const Color(0xFF00897B),
+    title: l10n.onboardingChronicTitle,
+    subtitle: l10n.onboardingChronicSubtitle,
     menstruationTracking: false,
     modules: {
       'happiness', 'sleep', 'stress', 'symptoms', 'food', 'weather',
@@ -54,9 +56,9 @@ const _useCases = [
   ),
   _UseCase(
     icon: Icons.self_improvement,
-    color: Color(0xFF7C4DFF),
-    title: 'Mood & habit tracking',
-    subtitle: 'Emotions, stress, sleep, activities & substances',
+    color: const Color(0xFF7C4DFF),
+    title: l10n.onboardingMoodTitle,
+    subtitle: l10n.onboardingMoodSubtitle,
     menstruationTracking: false,
     modules: {
       'happiness', 'emotions', 'sleep', 'stress', 'work', 'leisure',
@@ -65,9 +67,9 @@ const _useCases = [
   ),
   _UseCase(
     icon: Icons.tune,
-    color: Color(0xFFF57C00),
-    title: 'Start from scratch',
-    subtitle: 'A blank slate: add only what you need in Settings',
+    color: const Color(0xFFF57C00),
+    title: l10n.onboardingScratchTitle,
+    subtitle: l10n.onboardingScratchSubtitle,
     menstruationTracking: false,
     modules: {'happiness', 'notes'},
   ),
@@ -87,6 +89,11 @@ class OnboardingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = context.l10n;
+    final useCases = _useCases(l10n);
+    // 'system' stands in for null (follow the device language).
+    final languageCode =
+        context.watch<SettingsProvider>().settings.languageCode ?? 'system';
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -94,7 +101,24 @@ class OnboardingScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerRight,
+                child: DropdownButton<String>(
+                  value: languageCode,
+                  icon: const Icon(Icons.language, size: 18),
+                  underline: const SizedBox.shrink(),
+                  items: [
+                    DropdownMenuItem(
+                        value: 'system', child: Text(l10n.languageSystem)),
+                    for (final MapEntry(key: code, value: name)
+                        in languageNames.entries)
+                      DropdownMenuItem(value: code, child: Text(name)),
+                  ],
+                  onChanged: (v) => context
+                      .read<SettingsProvider>()
+                      .setLanguage(v == 'system' ? null : v),
+                ),
+              ),
               Text(
                 'sarapp',
                 style: theme.textTheme.displaySmall
@@ -103,7 +127,7 @@ class OnboardingScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'What do you want to track?',
+                l10n.onboardingQuestion,
                 style: theme.textTheme.titleMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -111,9 +135,7 @@ class OnboardingScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'These are just starting points. You can turn modules on or '
-                'off, edit their options and questions, or create your own '
-                'modules at any time in Settings.',
+                l10n.onboardingHint,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -122,10 +144,10 @@ class OnboardingScreen extends StatelessWidget {
               const SizedBox(height: 32),
               Expanded(
                 child: ListView.separated(
-                  itemCount: _useCases.length,
+                  itemCount: useCases.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (context, i) =>
-                      _UseCaseCard(useCase: _useCases[i], onTap: () => _select(context, _useCases[i])),
+                      _UseCaseCard(useCase: useCases[i], onTap: () => _select(context, useCases[i])),
                 ),
               ),
             ],

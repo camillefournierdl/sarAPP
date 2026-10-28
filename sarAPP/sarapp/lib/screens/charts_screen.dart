@@ -5,6 +5,7 @@ import '../providers/entries_provider.dart';
 import '../providers/settings_provider.dart';
 import '../widgets/cycle_phase_selector.dart';
 import '../widgets/emotion_tag_selector.dart';
+import '../l10n/l10n_helpers.dart';
 
 class ChartsScreen extends StatelessWidget {
   const ChartsScreen({super.key});
@@ -16,7 +17,7 @@ class ChartsScreen extends StatelessWidget {
         context.watch<SettingsProvider>().settings.isMenstruationTracking;
 
     if (entries.isEmpty) {
-      return const Center(child: Text('Log some entries to see charts.'));
+      return Center(child: Text(context.l10n.chartsEmpty));
     }
 
     // ── Emotion frequency (last 30 days) ──────────────────────────────────
@@ -62,11 +63,11 @@ class ChartsScreen extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         // ── Emotion bar chart ──────────────────────────────────────────────
-        Text('Emotions — last 30 days',
+        Text(context.l10n.chartsEmotionsTitle,
             style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 12),
         if (emotionBars.isEmpty)
-          const Text('No emotion data yet.')
+          Text(context.l10n.chartsNoEmotions)
         else
           SizedBox(
             height: 220,
@@ -85,7 +86,10 @@ class ChartsScreen extends StatelessWidget {
                         return Padding(
                           padding: const EdgeInsets.only(top: 4),
                           child: Text(
-                            emotionLabel(emotionKeys[idx]).split(' ').last,
+                            context.l10n
+                                .option(emotionLabel(emotionKeys[idx]))
+                                .split(' ')
+                                .last,
                             style: const TextStyle(fontSize: 10),
                           ),
                         );
@@ -110,11 +114,11 @@ class ChartsScreen extends StatelessWidget {
         // ── Cycle phase chart (female only) ───────────────────────────────
         if (isFemale) ...[
           const SizedBox(height: 32),
-          Text('Cycle phases — last 30 days',
+          Text(context.l10n.chartsPhasesTitle,
               style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
           if (phaseCounts.isEmpty)
-            const Text('No cycle phase data yet.')
+            Text(context.l10n.chartsNoPhases)
           else
             SizedBox(
               height: 220,
@@ -123,7 +127,8 @@ class ChartsScreen extends StatelessWidget {
                   sections: phaseCounts.entries.map((entry) {
                     return PieChartSectionData(
                       value: entry.value.toDouble(),
-                      title: '${cyclePhaseLabel(entry.key)}\n${entry.value}d',
+                      title: '${context.l10n.cyclePhase(entry.key)}\n'
+                          '${context.l10n.daysShort(entry.value)}',
                       color: cyclePhaseColor(entry.key),
                       radius: 80,
                       titleStyle: const TextStyle(

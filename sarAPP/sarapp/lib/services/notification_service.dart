@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
+import '../l10n/app_localizations.dart';
 import '../providers/entries_provider.dart';
 import '../screens/log_entry_screen.dart';
 
@@ -17,7 +18,6 @@ class NotificationService {
   static final navigatorKey = GlobalKey<NavigatorState>();
 
   static const _channelId = 'sarapp_daily';
-  static const _channelName = 'Daily reminder';
   static const _notifId = 0;
 
   static int _scheduledHour = 20;
@@ -116,16 +116,28 @@ class NotificationService {
     return await android?.requestNotificationsPermission() ?? false;
   }
 
-  static Future<void> scheduleDailyReminder(int hour, int minute) async {
+  /// Strings for [languageCode], or the device language when null.
+  /// Falls back to English for languages the app doesn't ship.
+  static AppLocalizations _strings(String? languageCode) {
+    final code = languageCode ??
+        WidgetsBinding.instance.platformDispatcher.locale.languageCode;
+    final supported = AppLocalizations.supportedLocales
+        .any((l) => l.languageCode == code);
+    return lookupAppLocalizations(Locale(supported ? code : 'en'));
+  }
+
+  static Future<void> scheduleDailyReminder(int hour, int minute,
+      {String? languageCode}) async {
     if (!Platform.isAndroid && !Platform.isIOS) return;
     _scheduledHour = hour;
     _scheduledMinute = minute;
     await _plugin.cancel(_notifId);
 
-    const details = NotificationDetails(
+    final l10n = _strings(languageCode);
+    final details = NotificationDetails(
       android: AndroidNotificationDetails(
         _channelId,
-        _channelName,
+        l10n.reminderChannelName,
         importance: Importance.defaultImportance,
         priority: Priority.defaultPriority,
       ),
@@ -133,8 +145,8 @@ class NotificationService {
 
     await _plugin.zonedSchedule(
       _notifId,
-      'Time to log your day',
-      'How are you feeling today?',
+      l10n.reminderTitle,
+      l10n.reminderBody,
       _nextInstanceOf(hour, minute),
       details,
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,

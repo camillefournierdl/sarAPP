@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/l10n_helpers.dart';
 
 class ChipSelector extends StatelessWidget {
   final List<String> options;
@@ -20,7 +21,7 @@ class ChipSelector extends StatelessWidget {
       children: options.map((opt) {
         final isSelected = selected.contains(opt);
         return FilterChip(
-          label: Text(opt),
+          label: Text(context.l10n.option(opt)),
           selected: isSelected,
           onSelected: (on) {
             final updated = List<String>.from(selected);

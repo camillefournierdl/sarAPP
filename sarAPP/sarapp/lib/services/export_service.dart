@@ -74,7 +74,7 @@ class ExportService {
 
     await Share.shareXFiles(
       [XFile(file.path)],
-      subject: 'sarapp Data Export',
+      subject: 'sarapp data export',
     );
   }
 

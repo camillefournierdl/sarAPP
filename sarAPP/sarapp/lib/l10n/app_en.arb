@@ -1,0 +1,383 @@
+{
+  "@@locale": "en",
+  "language": "language",
+  "languageSystem": "system default",
+  "reminderChannelName": "daily reminder",
+  "reminderTitle": "time to log your day",
+  "reminderBody": "how are you feeling today?",
+  "onboardingQuestion": "what do you want to track in sarapp?",
+  "onboardingHint": "these are just starting points. you can turn modules on or off, edit each option and question, or create your own modules at any time in settings.",
+  "onboardingMenstrualTitle": "menstrual tracking",
+  "onboardingMenstrualSubtitle": "cycle phases, period symptoms, mood & libido",
+  "onboardingChronicTitle": "chronic symptoms",
+  "onboardingChronicSubtitle": "symptoms, pain, sleep, stress & possible triggers",
+  "onboardingMoodTitle": "mood & habit tracking",
+  "onboardingMoodSubtitle": "emotions, stress, sleep, activities & substances",
+  "onboardingScratchTitle": "start from scratch",
+  "onboardingScratchSubtitle": "a blank slate: add only what you need in settings",
+  "optHappy": "😊 happy",
+  "optSad": "😢 sad",
+  "optAngry": "😤 angry",
+  "optAnxious": "😰 anxious",
+  "optTired": "😴 tired",
+  "optEnergized": "⚡ energized",
+  "optDayOff": "🌿 day off",
+  "optHalfDay": "🌗 half day",
+  "optFullDay": "💼 full day",
+  "optWeightLifting": "🏋️ weight lifting",
+  "optIntenseCardio": "🏃 intense cardio",
+  "optEndurance": "🚴 endurance",
+  "optDance": "💃 dance",
+  "optClimbing": "🧗 climbing",
+  "optReading": "📖 reading",
+  "optGardening": "🌱 gardening",
+  "optBoardGames": "🎲 board games",
+  "optGaming": "🎮 gaming",
+  "optMusicPractice": "🎵 music (practice)",
+  "optMusicGroup": "🎶 music (group)",
+  "optGluten": "🌾 gluten",
+  "optLactose": "🥛 lactose",
+  "optSugars": "🍬 sugars",
+  "optChicken": "🍗 chicken",
+  "optRedMeat": "🥩 red meat",
+  "optOtherMeat": "🍖 other meat",
+  "optFish": "🐟 fish",
+  "optAlcohol": "🍷 alcohol",
+  "optCaffeine": "☕ caffeine",
+  "optNicotine": "🚬 nicotine",
+  "optCannabis": "🌿 cannabis",
+  "optMedication": "💊 medication",
+  "optCramps": "cramps",
+  "optBloating": "bloating",
+  "optHeadache": "headache",
+  "optFatigue": "fatigue",
+  "optMoodSwings": "mood swings",
+  "optBreastTenderness": "breast tenderness",
+  "optBackPain": "back pain",
+  "optAcne": "acne",
+  "optPain": "⚡ pain",
+  "optJointPain": "🦴 joint pain",
+  "optHeadacheMigraine": "🤕 headache / migraine",
+  "optBrainFog": "🌫️ brain fog",
+  "optDizziness": "💫 dizziness",
+  "optInsomnia": "😵 insomnia",
+  "optHealthy": "healthy",
+  "optSick": "sick",
+  "optCold": "🤧 cold",
+  "optFlu": "🤒 flu",
+  "optNausea": "🤢 nausea",
+  "optHeadacheSick": "🤕 headache",
+  "optFever": "🔥 fever",
+  "optDigestive": "🫄 digestive issues",
+  "optFatigueSick": "😮‍💨 fatigue",
+  "optYes": "yes",
+  "optNo": "no",
+  "modHappiness": "happiness",
+  "modEmotions": "emotions",
+  "modSleep": "sleep",
+  "modStress": "stress",
+  "modWeather": "weather",
+  "modHealth": "health",
+  "modWork": "work",
+  "modSports": "sports",
+  "modLeisure": "leisure activities",
+  "modFood": "food",
+  "modSubstances": "substances",
+  "modSymptoms": "symptoms",
+  "modLibido": "libido",
+  "modSex": "sex",
+  "modWater": "water intake",
+  "modNotes": "notes",
+  "modHappinessDesc": "daily happiness scale (0 – 10)",
+  "modEmotionsDesc": "how did you feel today?",
+  "modSleepDesc": "sleep quality scale (0 – 10)",
+  "modStressDesc": "stress level (0 – 10)",
+  "modWeatherDesc": "weather rating scale (0 – 10)",
+  "modHealthDesc": "how did you feel physically today?",
+  "modWorkDesc": "work day type",
+  "modSportsDesc": "physical sport tracking",
+  "modLeisureDesc": "other activity tracking",
+  "modFoodDesc": "food category selection",
+  "modSubstancesDesc": "alcohol, caffeine, nicotine & more",
+  "modSymptomsDesc": "chronic symptom tracking",
+  "modLibidoDesc": "libido level (0 – 10)",
+  "modSexDesc": "had sex today?",
+  "modWaterDesc": "glasses of water today (0 – 10)",
+  "modNotesDesc": "free-text notes",
+  "healthFollowupQuestion": "what was wrong? (optional)",
+  "phaseMenstruation": "menstruation",
+  "phaseFollicular": "follicular",
+  "phaseHighFertility": "higher fertility",
+  "phaseOvulation": "ovulation",
+  "phaseLuteal": "luteal",
+  "cancel": "cancel",
+  "noEntriesToExport": "no entries to export yet.",
+  "backupReadError": "could not read this backup file.",
+  "importBackupTitle": "import backup?",
+  "importBackupBody": "this will import {count, plural, =1{1 entry} other{{count} entries}} and restore your modules, options, and preferences from the backup.\n\nentries already logged on the same dates will be overwritten. this cannot be undone.",
+  "@importBackupBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importAction": "import",
+  "importedEntries": "imported {count, plural, =1{1 entry} other{{count} entries}}.",
+  "@importedEntries": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "monday": "monday",
+  "sunday": "sunday",
+  "weekStartsOn": "week starts on",
+  "notificationsBlocked": "notifications are blocked. allow them in system settings to get reminders.",
+  "pickReminderTime": "pick reminder time",
+  "resetTitle": "reset all data?",
+  "resetBody": "this will permanently delete all your logged entries and clear your cycle baseline. your tracking mode will be kept.\n\nthis cannot be undone.",
+  "deleteEverything": "delete everything",
+  "allDataDeleted": "all data deleted.",
+  "sectionModules": "questionnaire modules",
+  "modulesActive": "{count} active",
+  "@modulesActive": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "customizeModules": "customize modules",
+  "customizeModulesSubtitle": "edit question, options, or delete",
+  "sectionTracking": "tracking",
+  "menstruationTracking": "menstruation tracking",
+  "menstruationTrackingSubtitle": "enable cycle phases, period dates & symptoms",
+  "sectionCycle": "cycle",
+  "showFertility": "show higher-fertility window",
+  "showFertilitySubtitle": "highlights the ~5 days of elevated fertility around ovulation",
+  "showIntimacy": "show intimacy",
+  "showIntimacySubtitle": "a pink dot indicates tracked activity in the calendar",
+  "sectionReminder": "reminder",
+  "dailyReminder": "daily reminder",
+  "dailyReminderSubtitle": "get a nudge to log your day",
+  "reminderTime": "reminder time",
+  "sectionData": "data",
+  "exportCsv": "export to CSV",
+  "exportCsvSubtitle": "share or save your data",
+  "resetAllData": "reset all data",
+  "resetAllDataSubtitle": "delete all entries and cycle baseline",
+  "sectionAnalytics": "analytics",
+  "insightsTitle": "insights & correlations",
+  "insightsComingSoon": "coming in a future version: see how your mood, sleep and symptoms relate to each other.",
+  "sectionAbout": "about",
+  "aboutApp": "about sarapp",
+  "aboutAppSubtitle": "what this app is and how it works",
+  "advanced": "advanced",
+  "advancedSubtitle": "backup & restore",
+  "advancedSubtitleNerd": "nerd mode, developer tools & backup",
+  "backupJson": "backup data (JSON)",
+  "backupJsonSubtitle": "full backup — use to move to a new install",
+  "importBackup": "import backup",
+  "importBackupSubtitle": "restore entries and settings from a JSON backup",
+  "daysCount": "{count, plural, =1{1 day} other{{count} days}}",
+  "@daysCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "daysDefault": "{count} days (default)",
+  "@daysDefault": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cycleNoteDefault": "log at least 2 period starts to personalise",
+  "cycleNoteBased": "based on {count, plural, =1{1 cycle} other{{count} cycles}}",
+  "@cycleNoteBased": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "periodNoteDefault": "log a period start + end to personalise",
+  "periodNoteBased": "based on {count, plural, =1{1 period} other{{count} periods}}",
+  "@periodNoteBased": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cycleStatsTitle": "your cycle statistics",
+  "cycleLength": "cycle length",
+  "periodLength": "period length",
+  "estimatedPhases": "estimated phases",
+  "lutealFixedNote": "luteal phase is fixed at 14 days (scientifically constant).",
+  "aboutTagline": "v0.1 · free, open-source, and made with ❤️",
+  "aboutTrackTitle": "track what you choose",
+  "aboutTrackBody": "sarapp lets you track different dimensions of your day. everyone is different. you decide what dimensions matter to you. enable or disable any module at any time in settings. there is no required field.",
+  "aboutDataTitle": "your data, your device",
+  "aboutDataBody": "everything you log stays on your phone. no account, no cloud sync. your data is stored locally in a private database and can be exported to a CSV whenever you want.",
+  "aboutOpenTitle": "free and open-source",
+  "aboutOpenBody": "sarapp is free to use and its source code is open. you can inspect exactly what it does, contribute improvements, or adapt it for your own needs.",
+  "aboutMedicalTitle": "built on science and community but...",
+  "aboutMedicalBody": "cycle phases and fertile days shown in sarapp are estimates based on science and what you log. they are not reliable enough to use as contraception or to plan a pregnancy, and sarapp is not a medical device. talk to a healthcare professional about any health concerns.",
+  "aboutFooter": "data always stays on your device.",
+  "modulesReorderHint": "drag (press long) to reorder. tap ✏️ to customise.",
+  "editModule": "edit module",
+  "removeModuleTitle": "remove \"{name}\"?",
+  "@removeModuleTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "removeModuleBody": "this module will be removed from your questionnaire. past responses are kept silently in your data.",
+  "remove": "remove",
+  "newModule": "new module",
+  "discardTitle": "discard changes?",
+  "discardBody": "you have unsaved edits. discard them?",
+  "keepEditing": "keep editing",
+  "discard": "discard",
+  "save": "save",
+  "iconLabel": "icon",
+  "moduleNameLabel": "module name *",
+  "questionLabel": "question",
+  "clearToRestoreDefault": "clear to restore default",
+  "responseType": "response type",
+  "rtScale": "0–10 scale",
+  "rtMultiSelect": "multi-select",
+  "rtSingleSelect": "single-select",
+  "rtText": "free text",
+  "rtConditional": "conditional",
+  "lowLabel": "low label",
+  "highLabel": "high label",
+  "lowLabelHelper": "emoji or text for the low end",
+  "highLabelHelper": "emoji or text for the high end",
+  "primaryOptions": "primary options",
+  "answerOptions": "answer options",
+  "optionHint": "e.g. 😊 happy",
+  "triggerOption": "trigger option",
+  "triggerOptionHint": "which option reveals the follow-up?",
+  "followupQuestionLabel": "follow-up question (optional)",
+  "followupOptions": "follow-up options",
+  "followupOptionHint": "add a follow-up option",
+  "removeModule": "remove module",
+  "pastResponsesKept": "past responses are kept in your data",
+  "add": "add",
+  "logToday": "log today",
+  "editToday": "edit today",
+  "followUp": "follow-up",
+  "notesHint": "anything else on your mind…",
+  "noModulesTitle": "no modules enabled",
+  "noModulesBody": "enable at least one module in settings to start logging.",
+  "goToSettings": "go to settings",
+  "back": "back",
+  "next": "next",
+  "tabHome": "home",
+  "tabHistory": "history",
+  "tabCalendar": "calendar",
+  "tabAnalytics": "analytics",
+  "tabSettings": "settings",
+  "notLoggedToday": "you haven't logged today yet.",
+  "todaysLog": "today's log",
+  "edit": "edit",
+  "recent": "recent",
+  "goodMorning": "good morning 🌅",
+  "goodAfternoon": "good afternoon ☀️",
+  "goodEvening": "good evening 🌙",
+  "cycleDay": "day {day} — {phase}",
+  "@cycleDay": {
+    "placeholders": {
+      "day": {
+        "type": "int"
+      },
+      "phase": {
+        "type": "String"
+      }
+    }
+  },
+  "nextPeriodTomorrow": "next period predicted tomorrow",
+  "nextPeriodIn": "next period in {count, plural, =1{1 day} other{{count} days}}",
+  "@nextPeriodIn": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "catchUpPrompt": "no log for {day} — want to catch up?",
+  "@catchUpPrompt": {
+    "placeholders": {
+      "day": {
+        "type": "String"
+      }
+    }
+  },
+  "logIt": "log it",
+  "noPastEntries": "no past entries yet.",
+  "noEntriesYet": "no entries yet. start logging!",
+  "deleteEntryTitle": "delete entry?",
+  "deleteEntryBody": "remove the log for {date}?",
+  "@deleteEntryBody": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "delete": "delete",
+  "swipeToDelete": "swipe a log left to delete it.",
+  "goToToday": "go to today",
+  "tabCycle": "cycle",
+  "tabMood": "mood",
+  "aboutCyclePhases": "about cycle phases",
+  "cycleCalendarHint": "tap a past day on the calendar to mark your period start and end.",
+  "moodCalendarHint": "tap a past day on the calendar to edit the log for that day.",
+  "intimacy": "intimacy",
+  "periodStartedToday": "period started on this day",
+  "periodEndedToday": "period ended on this day",
+  "cycleInfoTitle": "the menstrual cycle",
+  "cycleInfoIntro": "a cycle starts on the first day of your period and ends the day before the next one. on average it lasts about 28 days, but anywhere between 21 and 35 days is common.",
+  "phaseInfoMenstruationTitle": "menstruation",
+  "phaseInfoMenstruationDuration": "about 3–7 days",
+  "phaseInfoMenstruationBody": "your period: the lining of the uterus is shed. energy can be lower and cramps are common.",
+  "phaseInfoFollicularTitle": "follicular phase",
+  "phaseInfoFollicularDuration": "about 7–14 days after your period",
+  "phaseInfoFollicularBody": "hormone levels (oestrogen) rise as the body prepares to release an egg. many people feel more energetic. this is the phase whose length varies the most, which is why cycle lengths differ.",
+  "phaseInfoFertilityTitle": "higher fertility window",
+  "phaseInfoFertilityDuration": "about 5 days, ending on ovulation",
+  "phaseInfoFertilityBody": "the days when pregnancy is most likely (but pregnancy is also possible outside of this phase!). to show it on the calendar, turn on \"show higher-fertility window\" in settings.",
+  "phaseInfoOvulationTitle": "ovulation",
+  "phaseInfoOvulationDuration": "about 1 day",
+  "phaseInfoOvulationBody": "an egg is released, usually around 14 days before the next period (day 14 of a 28-day cycle).",
+  "phaseInfoLutealTitle": "luteal phase",
+  "phaseInfoLutealDuration": "about 12–14 days",
+  "phaseInfoLutealBody": "progesterone rises after ovulation. towards the end, some people notice PMS symptoms such as bloating, mood changes or breast tenderness. this phase is fairly stable in length.",
+  "everyBodyTitle": "every body is different",
+  "everyBodyBody": "these are averages. your own cycle may be shorter, longer or irregular, and it can change over time with age, stress, illness, travel, contraception, pregnancy or menopause.",
+  "knowYourCycleTitle": "getting to know your cycle",
+  "knowYourCycleBody": "mark the start and end of each period on the calendar. sarapp uses your own history, not just the averages above, to estimate your phases. after a few cycles, you will have a better idea of when each phase is likely to happen for you, and how your mood, sleep and symptoms change across your cycle.",
+  "phasesEstimateNote": "phases shown in sarapp are estimates. they are not reliable enough to use as contraception or to plan a pregnancy.",
+  "chartsEmpty": "log some entries to see charts.",
+  "chartsEmotionsTitle": "emotions — last 30 days",
+  "chartsNoEmotions": "no emotion data yet.",
+  "chartsPhasesTitle": "cycle phases — last 30 days",
+  "chartsNoPhases": "no cycle phase data yet.",
+  "daysShort": "{count}d",
+  "@daysShort": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
+}

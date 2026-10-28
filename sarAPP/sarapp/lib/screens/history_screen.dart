@@ -6,6 +6,7 @@ import '../providers/settings_provider.dart';
 import '../widgets/cycle_phase_selector.dart';
 import '../widgets/emotion_tag_selector.dart';
 import 'log_entry_screen.dart';
+import '../l10n/l10n_helpers.dart';
 
 class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
@@ -17,8 +18,8 @@ class HistoryScreen extends StatelessWidget {
         context.watch<SettingsProvider>().settings.isMenstruationTracking;
 
     if (entries.isEmpty) {
-      return const Center(
-        child: Text('No entries yet. Start logging!'),
+      return Center(
+        child: Text(context.l10n.noEntriesYet),
       );
     }
 
@@ -44,16 +45,18 @@ class HistoryScreen extends StatelessWidget {
             return await showDialog<bool>(
               context: context,
               builder: (_) => AlertDialog(
-                title: const Text('Delete entry?'),
-                content: Text('Remove the log for ${e.date}?'),
+                title: Text(context.l10n.deleteEntryTitle),
+                content: Text(context.l10n.deleteEntryBody(DateFormat.yMMMMd()
+                    .format(DateTime.parse(e.date))
+                    .toLowerCase())),
                 actions: [
                   TextButton(
                       onPressed: () => Navigator.pop(context, false),
-                      child: const Text('Cancel')),
+                      child: Text(context.l10n.cancel)),
                   TextButton(
                       onPressed: () => Navigator.pop(context, true),
-                      child: const Text('Delete',
-                          style: TextStyle(color: Colors.red))),
+                      child: Text(context.l10n.delete,
+                          style: const TextStyle(color: Colors.red))),
                 ],
               ),
             );
@@ -70,16 +73,18 @@ class HistoryScreen extends StatelessWidget {
                     builder: (_) => LogEntryScreen(existing: e)),
               ),
               title: Text(
-                DateFormat('EEE, MMM d yyyy').format(DateTime.parse(e.date)),
+                DateFormat.yMMMEd().format(DateTime.parse(e.date)).toLowerCase(),
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               subtitle: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (e.emotions.isNotEmpty)
-                    Text(e.emotions.map(emotionLabel).join(', ')),
+                    Text(e.emotions
+                        .map((em) => context.l10n.option(emotionLabel(em)))
+                        .join(', ')),
                   if (isFemale && e.cyclePhase != null)
-                    Text(cyclePhaseLabel(e.cyclePhase),
+                    Text(context.l10n.cyclePhase(e.cyclePhase),
                         style: TextStyle(
                             color: cyclePhaseColor(e.cyclePhase))),
                   if (e.notes.isNotEmpty)
@@ -120,7 +125,7 @@ class _SwipeToDeleteBanner extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Swipe a log left to delete it.',
+              context.l10n.swipeToDelete,
               style: TextStyle(color: colorScheme.onSecondaryContainer),
             ),
           ),

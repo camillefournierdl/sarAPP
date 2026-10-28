@@ -14,6 +14,8 @@ import 'calendar_screen.dart';
 import 'history_screen.dart';
 import 'log_entry_screen.dart';
 import 'settings/settings_screen.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/l10n_helpers.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -56,21 +58,24 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Scaffold(
       body: SafeArea(child: _tabs[_tab.clamp(0, _tabs.length - 1)]),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab.clamp(0, _tabs.length - 1),
         onDestinationSelected: (i) => setState(() => _tab = i),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.history), label: 'History'),
+        destinations: [
           NavigationDestination(
-              icon: Icon(Icons.calendar_month), label: 'Calendar'),
+              icon: const Icon(Icons.home), label: l10n.tabHome),
+          NavigationDestination(
+              icon: const Icon(Icons.history), label: l10n.tabHistory),
+          NavigationDestination(
+              icon: const Icon(Icons.calendar_month), label: l10n.tabCalendar),
           if (kAnalyticsEnabled)
             NavigationDestination(
-                icon: Icon(Icons.insights), label: 'Analytics'),
+                icon: const Icon(Icons.insights), label: l10n.tabAnalytics),
           NavigationDestination(
-              icon: Icon(Icons.settings), label: 'Settings'),
+              icon: const Icon(Icons.settings), label: l10n.tabSettings),
         ],
       ),
     );
@@ -93,6 +98,7 @@ class _DashboardTab extends StatelessWidget {
     final settings = context.watch<SettingsProvider>().settings;
     final isFemale = settings.isMenstruationTracking;
     final theme = Theme.of(context);
+    final l10n = context.l10n;
 
     // Determine cycle baseline: prefer settings, fall back to most recent logged start
     final loggedBaseline = entries
@@ -107,12 +113,12 @@ class _DashboardTab extends StatelessWidget {
       children: [
         // Greeting
         Text(
-          _greeting(),
+          _greeting(l10n),
           style: theme.textTheme.headlineSmall
               ?.copyWith(fontWeight: FontWeight.bold),
         ),
         Text(
-          DateFormat('EEEE, MMMM d').format(DateTime.now()),
+          DateFormat.MMMMEEEEd().format(DateTime.now()).toLowerCase(),
           style: theme.textTheme.bodyMedium
               ?.copyWith(color: theme.colorScheme.outline),
         ),
@@ -139,11 +145,11 @@ class _DashboardTab extends StatelessWidget {
             child: todayEntry == null
                 ? Column(
                     children: [
-                      const Text("You haven't logged today yet."),
+                      Text(l10n.notLoggedToday),
                       const SizedBox(height: 12),
                       FilledButton.icon(
                         icon: const Icon(Icons.add),
-                        label: const Text('Log today'),
+                        label: Text(l10n.logToday),
                         onPressed: () => Navigator.of(context).push(
                           MaterialPageRoute(
                               builder: (_) => const LogEntryScreen()),
@@ -158,9 +164,9 @@ class _DashboardTab extends StatelessWidget {
                         children: [
                           const Icon(Icons.check_circle, color: Colors.green),
                           const SizedBox(width: 8),
-                          const Text("Today's log",
-                              style:
-                                  TextStyle(fontWeight: FontWeight.bold)),
+                          Text(l10n.todaysLog,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold)),
                           const Spacer(),
                           TextButton(
                             onPressed: () => Navigator.of(context).push(
@@ -168,7 +174,7 @@ class _DashboardTab extends StatelessWidget {
                                   builder: (_) => LogEntryScreen(
                                       existing: todayEntry)),
                             ),
-                            child: const Text('Edit'),
+                            child: Text(l10n.edit),
                           ),
                         ],
                       ),
@@ -178,7 +184,7 @@ class _DashboardTab extends StatelessWidget {
                           spacing: 6,
                           children: todayEntry.emotions.map((em) {
                             return Chip(
-                              label: Text(emotionLabel(em),
+                              label: Text(l10n.option(emotionLabel(em)),
                                   style: const TextStyle(fontSize: 12)),
                               backgroundColor:
                                   emotionColor(em).withAlpha(60),
@@ -200,7 +206,7 @@ class _DashboardTab extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 6),
-                            Text(cyclePhaseLabel(todayEntry.cyclePhase)),
+                            Text(l10n.cyclePhase(todayEntry.cyclePhase)),
                           ],
                         ),
                       ],
@@ -217,18 +223,18 @@ class _DashboardTab extends StatelessWidget {
 
         // Recent entries preview
         const SizedBox(height: 24),
-        Text('Recent', style: theme.textTheme.titleMedium),
+        Text(l10n.recent, style: theme.textTheme.titleMedium),
         const SizedBox(height: 8),
         _RecentList(),
       ],
     );
   }
 
-  String _greeting() {
+  String _greeting(AppLocalizations l10n) {
     final h = DateTime.now().hour;
-    if (h < 12) return 'Good morning 🌅';
-    if (h < 18) return 'Good afternoon ☀️';
-    return 'Good evening 🌙';
+    if (h < 12) return l10n.goodMorning;
+    if (h < 18) return l10n.goodAfternoon;
+    return l10n.goodEvening;
   }
 }
 
@@ -267,13 +273,13 @@ class _CycleInfoCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Day $day — ${cyclePhaseLabel(phase)}',
+                    context.l10n.cycleDay(day, context.l10n.cyclePhase(phase)),
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   Text(
                     daysLeft == 1
-                        ? 'Next period predicted tomorrow'
-                        : 'Next period in $daysLeft days',
+                        ? context.l10n.nextPeriodTomorrow
+                        : context.l10n.nextPeriodIn(daysLeft),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -292,7 +298,7 @@ class _CatchUpCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = DateFormat('EEEE').format(DateTime.parse(date));
+    final label = DateFormat.EEEE().format(DateTime.parse(date)).toLowerCase();
     return Card(
       color: Theme.of(context).colorScheme.secondaryContainer,
       child: Padding(
@@ -302,7 +308,7 @@ class _CatchUpCard extends StatelessWidget {
             const Icon(Icons.history_edu),
             const SizedBox(width: 12),
             Expanded(
-              child: Text('No log for $label — want to catch up?'),
+              child: Text(context.l10n.catchUpPrompt(label)),
             ),
             TextButton(
               onPressed: () {
@@ -314,7 +320,7 @@ class _CatchUpCard extends StatelessWidget {
                       : LogEntryScreen(date: date),
                 ));
               },
-              child: const Text('Log it'),
+              child: Text(context.l10n.logIt),
             ),
           ],
         ),
@@ -329,16 +335,20 @@ class _RecentList extends StatelessWidget {
     final entries =
         context.watch<EntriesProvider>().entries.take(5).toList();
     if (entries.isEmpty) {
-      return const Text('No past entries yet.',
-          style: TextStyle(fontStyle: FontStyle.italic));
+      return Text(context.l10n.noPastEntries,
+          style: const TextStyle(fontStyle: FontStyle.italic));
     }
     return Column(
       children: entries.map((e) {
         return ListTile(
           contentPadding: EdgeInsets.zero,
-          title: Text(DateFormat('EEE, MMM d').format(DateTime.parse(e.date))),
+          title: Text(DateFormat.MMMEd()
+              .format(DateTime.parse(e.date))
+              .toLowerCase()),
           subtitle: e.emotions.isNotEmpty
-              ? Text(e.emotions.map(emotionLabel).join(', '))
+              ? Text(e.emotions
+                  .map((em) => context.l10n.option(emotionLabel(em)))
+                  .join(', '))
               : null,
           trailing: e.cyclePhase != null
               ? Container(

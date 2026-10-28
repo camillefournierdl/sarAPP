@@ -10,6 +10,7 @@ import '../widgets/chip_selector.dart';
 import '../widgets/emotion_tag_selector.dart';
 import '../widgets/scale_slider.dart';
 import '../models/app_settings.dart';
+import '../l10n/l10n_helpers.dart';
 
 class LogEntryScreen extends StatefulWidget {
   final Entry? existing;
@@ -90,8 +91,10 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
 
   String _appBarTitle() {
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    if (_date == today) return widget.existing == null ? 'Log today' : 'Edit today';
-    return DateFormat('MMM d, yyyy').format(DateTime.parse(_date));
+    if (_date == today) {
+      return widget.existing == null ? context.l10n.logToday : context.l10n.editToday;
+    }
+    return DateFormat.yMMMd().format(DateTime.parse(_date)).toLowerCase();
   }
 
   Future<void> _save() async {
@@ -141,6 +144,9 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
   List<Widget>? _buildBuiltinModule(
       AppModule m, AppSettings settings, bool isFemale) {
     if (m.menstruationOnly && !isFemale) return null;
+    final l10n = context.l10n;
+    final question =
+        settings.questionFor(m.key, l10n.moduleDescription(m));
 
     Widget child;
     switch (m.key) {
@@ -185,12 +191,12 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
         final followupOpts = settings.conditionalOptionsFor('health');
         return [
           _Section(
-            title: settings.questionFor('health', m.description),
+            title: question,
             child: Wrap(
               spacing: 8,
               runSpacing: 8,
               children: primaryOpts.map((opt) => ChoiceChip(
-                label: Text(opt),
+                label: Text(l10n.option(opt)),
                 selected: _healthStatus == opt,
                 onSelected: (on) => setState(() {
                   _healthStatus = on ? opt : null;
@@ -202,7 +208,9 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
           if (_healthStatus == trigger && followupOpts.isNotEmpty) ...[
             const SizedBox(height: 16),
             _Section(
-              title: followupQ.isNotEmpty ? followupQ : 'Follow-up',
+              title: followupQ.isNotEmpty
+                  ? l10n.conditionalQuestion(followupQ)
+                  : l10n.followUp,
               child: ChipSelector(
                 options: followupOpts,
                 selected: _sickTags,
@@ -218,7 +226,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
           spacing: 8,
           runSpacing: 8,
           children: workOpts.map((opt) => ChoiceChip(
-            label: Text(opt),
+            label: Text(l10n.option(opt)),
             selected: _workDay == opt,
             onSelected: (on) => setState(() => _workDay = on ? opt : null),
           )).toList(),
@@ -257,9 +265,9 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
         child = TextField(
           controller: _notesController,
           maxLines: 4,
-          decoration: const InputDecoration(
-            hintText: 'Anything else on your mind…',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            hintText: l10n.notesHint,
+            border: const OutlineInputBorder(),
           ),
         );
       case 'libido':
@@ -275,7 +283,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
           spacing: 8,
           runSpacing: 8,
           children: sexOpts.map((opt) => ChoiceChip(
-            label: Text(opt),
+            label: Text(l10n.option(opt)),
             selected: _hadSex == opt,
             onSelected: (on) => setState(() => _hadSex = on ? opt : null),
           )).toList(),
@@ -293,7 +301,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
 
     return [
       _Section(
-        title: settings.questionFor(m.key, m.description),
+        title: question,
         child: child,
       ),
       const SizedBox(height: 16),
@@ -415,12 +423,12 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
                     size: 56,
                     color: theme.colorScheme.primary.withAlpha(120)),
                 const SizedBox(height: 20),
-                Text('No modules enabled',
+                Text(context.l10n.noModulesTitle,
                     style: theme.textTheme.titleMedium,
                     textAlign: TextAlign.center),
                 const SizedBox(height: 8),
                 Text(
-                  'Enable at least one module in Settings to start logging.',
+                  context.l10n.noModulesBody,
                   style: theme.textTheme.bodyMedium
                       ?.copyWith(color: theme.colorScheme.outline),
                   textAlign: TextAlign.center,
@@ -429,7 +437,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
                 FilledButton.icon(
                   onPressed: () => Navigator.of(context).pop(),
                   icon: const Icon(Icons.settings),
-                  label: const Text('Go to Settings'),
+                  label: Text(context.l10n.goToSettings),
                 ),
               ],
             ),
@@ -476,7 +484,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
         title: Text(_appBarTitle()),
         actions: [
           if (isLastPage)
-            TextButton(onPressed: _save, child: const Text('Save')),
+            TextButton(onPressed: _save, child: Text(context.l10n.save)),
         ],
       ),
       body: ListView(
@@ -486,7 +494,9 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
             children: [
               Expanded(
                 child: Text(
-                  DateFormat('EEEE, MMMM d, yyyy').format(DateTime.parse(_date)),
+                  DateFormat.yMMMMEEEEd()
+                      .format(DateTime.parse(_date))
+                      .toLowerCase(),
                   style: theme.textTheme.titleMedium,
                 ),
               ),
@@ -509,7 +519,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
                     onPressed: () =>
                         setState(() => _pageIndex = currentPage - 1),
                     icon: const Icon(Icons.arrow_back),
-                    label: const Text('Back'),
+                    label: Text(context.l10n.back),
                   ),
                 const Spacer(),
                 if (!isLastPage)
@@ -517,14 +527,14 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
                     onPressed: () =>
                         setState(() => _pageIndex = currentPage + 1),
                     icon: const Icon(Icons.arrow_forward),
-                    label: const Text('Next'),
+                    label: Text(context.l10n.next),
                     iconAlignment: IconAlignment.end,
                   ),
                 if (isLastPage)
                   FilledButton.icon(
                     onPressed: _save,
                     icon: const Icon(Icons.check),
-                    label: const Text('Save'),
+                    label: Text(context.l10n.save),
                     iconAlignment: IconAlignment.end,
                   ),
               ],

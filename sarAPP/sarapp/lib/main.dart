@@ -1,9 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import 'l10n/app_localizations.dart';
 import 'providers/analytics_provider.dart';
 import 'providers/entries_provider.dart';
 import 'providers/settings_provider.dart';
@@ -37,6 +39,14 @@ void main() async {
     notificationHour: settingsProvider.settings.notificationHour,
     notificationMinute: settingsProvider.settings.notificationMinute,
   );
+  // Re-schedule on launch so the reminder text follows the current language
+  // (e.g. after the device language changed).
+  final s = settingsProvider.settings;
+  if (s.notificationsEnabled) {
+    await NotificationService.scheduleDailyReminder(
+        s.notificationHour, s.notificationMinute,
+        languageCode: s.languageCode);
+  }
 
   final entriesProvider = EntriesProvider();
   await entriesProvider.load();
@@ -66,6 +76,17 @@ class SarApp extends StatelessWidget {
       title: 'sarapp',
       debugShowCheckedModeBanner: false,
       navigatorKey: NotificationService.navigatorKey,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      // null = follow the device language
+      locale: settings.languageCode == null
+          ? null
+          : Locale(settings.languageCode!),
+      builder: (context, child) {
+        // Lets plain DateFormat(...) calls pick up the active language.
+        Intl.defaultLocale = Localizations.localeOf(context).toLanguageTag();
+        return child!;
+      },
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF7C4DFF), // purple
