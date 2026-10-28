@@ -74,7 +74,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get optTired => '😴 fatigue';
 
   @override
-  String get optEnergized => '⚡ énergie';
+  String get optEnergized => '⚡ en forme';
 
   @override
   String get optDayOff => '🌿 jour de repos';
@@ -625,7 +625,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get aboutMedicalBody =>
-      'les phases du cycle et les jours fertiles affichés dans sarapp sont des estimations basées sur des connaissances scientifiques et sur ce que vous enregistrez. ce n\'est pas assez fiables pour servir de contraception ou pour planifier une grossesse, et sarapp n\'est pas un dispositif médical. parlez à un·e professionnel·le de santé pour toute question de santé.';
+      'sarapp n\'est pas un dispositif médical. les phases du cycle et les jours fertiles affichés dans sarapp sont des estimations basées sur des connaissances scientifiques et sur ce que vous enregistrez. ce n\'est pas assez fiable pour servir de contraception ou pour planifier une grossesse. parlez à un·e professionnel·le de santé pour toute question de santé.';
 
   @override
   String get aboutFooter => 'vos données restent toujours sur votre appareil.';
@@ -721,7 +721,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get optionHint => 'ex. 😊 joie';
 
   @override
-  String get triggerOption => 'option déclencheuse';
+  String get triggerOption => 'option qui déclenche la question de suivi';
 
   @override
   String get triggerOptionHint =>
@@ -903,7 +903,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get phaseInfoMenstruationBody =>
-      'les règles : la muqueuse de l\'utérus est évacuée. l\'énergie peut être plus basse et les crampes sont fréquentes.';
+      'les règles : la muqueuse de l\'utérus est évacuée. on peut se sentir un peu fatiguée et les crampes sont fréquentes.';
 
   @override
   String get phaseInfoFollicularTitle => 'phase folliculaire';
@@ -925,7 +925,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get phaseInfoFertilityBody =>
-      'les jours où une grossesse est la plus probable. pour l\'afficher dans le calendrier, activez « afficher la fenêtre de fertilité » dans les paramètres.';
+      'les jours où une grossesse est la plus probable (mais une grossesse est aussi possible en dehors de cette phase!). pour l\'afficher dans le calendrier, activez « afficher la fenêtre de fertilité » dans les paramètres.';
 
   @override
   String get phaseInfoOvulationTitle => 'ovulation';
@@ -945,7 +945,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get phaseInfoLutealBody =>
-      'la progestérone augmente après l\'ovulation. vers la fin, certaines personnes remarquent des symptômes prémenstruels (SPM) comme des ballonnements, des changements d\'humeur ou des seins sensibles. la durée de cette phase est assez stable.';
+      'la progestérone augmente après l\'ovulation. vers la fin, certaines personnes remarquent des symptômes prémenstruels (SPM) comme des ballonnements, des changements d\'humeur ou des douleurs aux seins. la durée de cette phase est assez stable.';
 
   @override
   String get everyBodyTitle => 'chaque corps est différent';

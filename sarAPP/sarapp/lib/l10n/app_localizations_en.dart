@@ -899,7 +899,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get phaseInfoFertilityBody =>
-      'the days when pregnancy is most likely. to show it on the calendar, turn on \"show higher-fertility window\" in settings.';
+      'the days when pregnancy is most likely (but pregnancy is also possible outside of this phase!). to show it on the calendar, turn on \"show higher-fertility window\" in settings.';
 
   @override
   String get phaseInfoOvulationTitle => 'ovulation';

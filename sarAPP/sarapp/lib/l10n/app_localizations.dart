@@ -1709,7 +1709,7 @@ abstract class AppLocalizations {
   /// No description provided for @phaseInfoFertilityBody.
   ///
   /// In en, this message translates to:
-  /// **'the days when pregnancy is most likely. to show it on the calendar, turn on \"show higher-fertility window\" in settings.'**
+  /// **'the days when pregnancy is most likely (but pregnancy is also possible outside of this phase!). to show it on the calendar, turn on \"show higher-fertility window\" in settings.'**
   String get phaseInfoFertilityBody;
 
   /// No description provided for @phaseInfoOvulationTitle.
